@@ -1,0 +1,81 @@
+; scadd - calculate the screen address
+; outputs: address in de
+scadd:                  
+                        push af
+
+                        ld a, (ycoord)
+                        ld e, a                 ; store y in e
+
+                        ; find line within cell
+
+                        and 7                   ; lime 0-7 within char square
+                        add a, 64               ; 64 * 256 = 16384 = start of screen display
+                        ld d, a                 ; line * 256
+
+                        ; find wgich third of the screen we're in
+
+                        ld a, e                 ; restore y coord
+                        and 192                 ; segment 0, 1 or 2 multiplied by 64
+                        rrca                    ; divide this by 8
+                        rrca
+                        rrca                    ; segment 0-2 multiplied by 8
+                        add a, d                ; add to d to give segment start address
+                        ld d, a
+
+                        ; find character cell within segment
+
+                        ld a, e                 ; 8 char cells per segment
+                        rlca                    ; divide y by 8 & multiply by 32
+                        rlca                    ; net calculation: multiply by 4
+                        and 224                 ; mask off bits we don't want
+                        ld e, a                 ; vertical coordinate calculation done
+
+                        ; add horizontal ellement
+
+                        ld a, (xcoord)
+                        rrca                    ; only need to dovode by 8
+                        rrca
+                        rrca
+                        and 31                  ; squares 0 - 31 across screen
+                        add a, e                ; add to total so far
+                        ld e, a                 ; de = screen address
+
+                        pop af
+                        
+                        ret
+
+; nextrow - calculates the screen address of the next row
+; inputs: a  - y coordinate of the current row
+;         de - screen address of the current row
+; outputs: de - the address of the next row
+;          a - new y coord
+nextrow:
+                        push hl                 ; save hl
+                        ld hl, de               ; move screen address into hl
+
+                        inc a                   ; move to next row
+                        push af
+
+                        and 63                  ; are we moving to the next third of the screen
+                        jr z, nextthird
+                        and 7                   ; are we moving to the next character
+                        jr z, nextchar
+                        ;dec hl                  ; left two bytes
+                        ;dec l                   ; not straddling 256-byte boundary
+                        inc h                   ; next row of this character cell
+nextrowdone:
+                        ld de, hl               ; move new screen address back into de
+
+                        pop af
+                        pop hl                  ; restore hl
+                        ret
+
+nextthird:
+                        ld de, 32               ; next segment is 32 bytes on
+                        add hl, de              ; add to the screen address
+                        jr nextrowdone
+
+nextchar:
+                        ld de, 63776            ; minus 1760
+                        add hl, de              ; subtract 1760 from screen address
+                        jr nextrowdone

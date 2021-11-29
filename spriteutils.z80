@@ -1,0 +1,86 @@
+; DrawSprite8x8 - Draws a 8x8 sprite on the screen at (xcoord, ycoord)
+; Inputs: hl - Start address of the sprite data
+
+DrawSprite8x8:
+                        push bc                         
+                        push de
+
+                        ld b, 8                         ; Size of sprite
+                        call scadd                      ; Load screen address for x,y into de
+
+                        ld a, (ycoord)                  ; y coord in a
+DrawRow:
+                        ex af, af'                      ; store y coord in a`
+
+                        push bc
+
+                        ld b, (hl)                      ; sprite in b
+                        ld c, 0                         ; empty sprite in c
+
+                        ld a, (xcoord)                  ; Load x coord into a
+                        and 7                           ; how many shifts required
+                        jr z, DrawFirstPart             ; 0 shifts, so only need to draw the b sprite
+
+                        cp 5                            ; Check if it's quick to shift left
+                        jr nc, ShiftLeft
+
+                        and a                           ; clear carry
+DoShift:
+                        rr b                            ; roll right, overflow into carry
+                        rr c                            ; roll right, picking up any overflow from b
+                        dec a                           ; and loop
+                        jr nz, DoShift
+
+ShiftComplete:
+                        inc e                           ; move to next char
+
+                        ld a, (de)                      ; what's already there
+                        xor c                           ; xor with 2nd part of the shifted sprite
+                        ld (de), a                      ; put it onto the screen
+
+                        dec e                           ; move back to the first char
+
+DrawFirstPart:
+                        ld a, (de)                      ; what's already on the screen
+                        xor b                           ; xor the 1st part of the shifted sprite
+                        ld (de), a                      ; put it on the screen
+
+LineDrawn:
+                        ex af, af'                      ; get ycoord from a'
+
+                        pop bc
+
+                        call nextrow                    ; get the next row address, updating the row in a
+                        inc hl
+
+                        djnz DrawRow
+
+                        pop de
+                        pop bc
+
+                        ret
+
+ShiftLeft:
+                        xor 7                           ; flip the last 3 bits to get the number of left shifts
+                        inc a
+ShiftLeft1:
+                        rl b                            ; roll b left, overflow into carry
+                        rl c                            ; roll c left, getting overflow from carry
+
+                        dec a
+                        jr nz, ShiftLeft1               ; loop
+
+                                                        ; At this point the 1st part of the shifted sprite is in c
+                                                        ; and b has the second part, but the sprite drawing part
+                                                        ; wants the 1st part in b and the second in c, so switch
+                        ld a, b
+                        ld b, c
+                        ld c, a
+                        jr ShiftComplete
+
+DrawBallSprite:
+                        push hl
+                        ld hl, Ball_Data
+                        call DrawSprite8x8
+                        pop hl
+                        ret

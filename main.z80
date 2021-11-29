@@ -1,0 +1,75 @@
+        DEVICE ZXSPECTRUM48                     ; sjasmplus directive for SAVESNA at end
+
+Stack_Top:              EQU 0xFFF0
+Code_Start:             EQU 0x7FFD
+
+                        ORG Code_Start
+
+                        jp Main_Start                   ; skip any includes
+
+                        include "data.z80"
+                        include "screenutils.z80"
+                        include "spriteutils.z80"
+
+Main_Start:
+                        xor a                           ; clear a to 0 (black)
+                        out (#fe), a                    ; set border to 0
+
+Draw_Ball:
+                        call DrawBallSprite             ; Draw sprite
+
+                        ei
+                        halt                            ; Wait
+                        di
+
+                        call DrawBallSprite             ; Delete sprite
+
+                        ld a, (ycoord)                  ; Get Y coord
+
+                        ld bc, (yballdir)               ; Get ball direction
+                        add c                           ; move ball in that direction
+
+                        ld (ycoord), a                  ; set the new y coord
+                        
+                        cp 184                          ; Check if the ball is hitting the bottom
+                        jr z, Switch_YDir
+
+                        cp 0                            ; Check if the ball is hitting the top
+                        jr z, Switch_YDir
+
+Switch_YDone:
+
+                        ld a, (xcoord)
+                        ld bc, (xballdir)
+                        add c
+                        ld (xcoord), a
+
+                        cp 248
+                        jr z, Switch_XDir
+
+                        cp 0
+                        jr z, Switch_XDir
+
+Switch_XDone:
+                        jr Draw_Ball
+
+Switch_YDir:
+                        ld a, (yballdir)                 ; Load balldir into a
+                        neg                             ; negate direction
+                        ld (yballdir), a                 ; store new direction
+
+                        jr Switch_YDone
+
+Switch_XDir:
+                        ld a, (xballdir)
+                        neg
+                        ld (xballdir), a
+
+                        jr Switch_XDone
+
+                        ret
+
+                        ;include "data.z80"
+
+Code_Length:            EQU $-Code_Start + 1
+        SAVESNA "main.sna", Code_Start
