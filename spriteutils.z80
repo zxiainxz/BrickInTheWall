@@ -1,23 +1,20 @@
 ; DrawSprite8x8 - Draws a 8x8 sprite on the screen at (xcoord, ycoord)
-; Inputs: hl - Start address of the sprite data
-
+; Inputs: ix - Start address of the sprite data
+;         de - screen address
+;         hl - x, y
 DrawSprite8x8:
-                        push bc                         
-                        push de
 
+                        ld a, l                         ; load y in a
                         ld b, 8                         ; Size of sprite
-                        call scadd                      ; Load screen address for x,y into de
-
-                        ld a, (ycoord)                  ; y coord in a
 DrawRow:
                         ex af, af'                      ; store y coord in a`
 
                         push bc
 
-                        ld b, (hl)                      ; sprite in b
+                        ld b, (ix)                      ; sprite in b
                         ld c, 0                         ; empty sprite in c
 
-                        ld a, (xcoord)                  ; Load x coord into a
+                        ld a, h                         ; Load x coord into a
                         and 7                           ; how many shifts required
                         jr z, DrawFirstPart             ; 0 shifts, so only need to draw the b sprite
 
@@ -51,12 +48,9 @@ LineDrawn:
                         pop bc
 
                         call nextrow                    ; get the next row address, updating the row in a
-                        inc hl
+                        inc ix
 
                         djnz DrawRow
-
-                        pop de
-                        pop bc
 
                         ret
 
@@ -78,9 +72,111 @@ ShiftLeft1:
                         ld c, a
                         jr ShiftComplete
 
+; DrawSprite8x8 - Draws a 8x8 sprite on the screen at (xcoord, ycoord)
+; Inputs: ix - Start address of the sprite data
+;         de - screen adderess
+;          h - x coordinate
+;          l - y coordinate
+DrawSprite16x8:
+                        push bc
+
+                        ld a, h
+                        ld (tmpx), a
+                        ld a, l
+
+                        ld b, 8
+DrawRow16:
+                        ex af, af'
+
+                        push bc
+
+                        ld b, (ix)
+                        ld c, (ix+1)
+                        ld h, 0
+
+                        ld a, (tmpx)
+                        and 7
+                        jr z, Draw16
+
+                        cp 5                            ; Check if it's quick to shift left
+                        jr nc, Shift16Left
+
+                        and a
+DoShift16:
+                        rr b
+                        rr c
+                        rr h
+                        dec a
+                        jr nz, DoShift16
+
+Shift16Complete:
+                        inc e
+                        inc e
+
+                        ld a, (de)
+                        xor h
+                        ld (de), a
+
+                        dec e
+                        dec e
+
+Draw16:
+                        ld a, (de)
+                        xor b
+                        ld (de), a
+
+                        inc e
+
+                        ld a, (de)
+                        xor c
+                        ld (de), a
+
+                        dec e
+
+                        ex af, af'
+
+                        ld bc, 2
+                        add ix, bc
+
+                        pop bc
+
+                        call nextrow
+                        
+                        djnz DrawRow16
+
+                        pop bc
+
+                        ret
+
+Shift16Left:
+                        xor 7                           ; flip the last 3 bits to get the number of left shifts
+                        inc a
+Shift16Left1:
+                        rl c
+                        rl b
+                        rl h
+
+                        dec a
+                        jr nz, Shift16Left1               ; loop
+
+                        ld a, c
+                        ld c, b
+                        ld b, h
+                        ld h, a
+                        jr Shift16Complete
+
 DrawBallSprite:
-                        push hl
-                        ld hl, Ball_Data
+                        ld ix, Ball_Data
                         call DrawSprite8x8
-                        pop hl
+                        ret
+
+DrawBrickSprite:
+                        ld ix, Brick_Data
+                        call DrawSprite16x8
+                        ret
+                        
+; da na na na na na na na batsprite!
+DrawBatSprite:
+                        ld ix, Bat_Data
+                        call DrawSprite16x8
                         ret

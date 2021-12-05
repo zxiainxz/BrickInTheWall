@@ -1,10 +1,12 @@
 ; scadd - calculate the screen address
+; inputs: h - x coordinate
+;         l - y coordinate
 ; outputs: address in de
 scadd:                  
                         push af
 
-                        ld a, (ycoord)
-                        ld e, a                 ; store y in e
+                        ld a, l
+                        ; ld e, a                 ; store y in e
 
                         ; find line within cell
 
@@ -14,7 +16,7 @@ scadd:
 
                         ; find wgich third of the screen we're in
 
-                        ld a, e                 ; restore y coord
+                        ld a, l                 ; restore y coord
                         and 192                 ; segment 0, 1 or 2 multiplied by 64
                         rrca                    ; divide this by 8
                         rrca
@@ -24,15 +26,15 @@ scadd:
 
                         ; find character cell within segment
 
-                        ld a, e                 ; 8 char cells per segment
+                        ld a, l                 ; 8 char cells per segment
                         rlca                    ; divide y by 8 & multiply by 32
                         rlca                    ; net calculation: multiply by 4
                         and 224                 ; mask off bits we don't want
                         ld e, a                 ; vertical coordinate calculation done
 
-                        ; add horizontal ellement
+                        ; add horizontal element
 
-                        ld a, (xcoord)
+                        ld a, h
                         rrca                    ; only need to dovode by 8
                         rrca
                         rrca
@@ -79,3 +81,47 @@ nextchar:
                         ld de, 63776            ; minus 1760
                         add hl, de              ; subtract 1760 from screen address
                         jr nextrowdone
+
+; atadd - get the attribute address
+; inputs: hl - x, y coordinates in character space
+; outputs: de - attribute address
+atadd:
+                        push af                 ; protect af
+
+                        ld a, l                 ; load y coord into a
+                        rrca                    ; * 32
+                        rrca
+                        rrca
+                        ld e, a                 ; store y * 32 into e
+                        and 3                   ; mask the bits for moving into high byte
+                        add a, 88               ; 88 * 256 = 22528 = ATTR_BASE
+                        ld d, a                 ; move to d (*256)
+                        ld a, e                 ; put y * 32 back into a
+                        and 224                 ; mask low byte
+                        ld e, a                 ; store into e
+                        ld a, h
+                        add a, e                ; add x coord to low byte
+                        ld e, a                 ; store into e
+
+                        pop af                  ; restore af
+                        ret
+
+; pixelattradd - get the attribute address of a given pixel
+; inputs: hl - x, y coordinates in pixel space
+; outputs: de - attribute address
+pixelattradd:
+                        push hl
+
+                        srl h                    ; divide x and y by 8
+                        srl h                    ; to get them into character space
+                        srl h
+                        srl h
+                        sla h
+                        srl l
+                        srl l
+                        srl l
+
+                        call atadd
+
+                        pop hl
+                        ret

@@ -1,0 +1,72 @@
+DisplayLevel:
+                        ld h, 0
+                        ld l, 24
+
+                        call scadd
+
+                        ld b, 4
+
+DrawNextRow
+                        push bc
+
+                        ld b, 16
+
+DrawNextBrick
+                        push de
+                        call DrawBrickSprite
+                        pop de
+
+                        inc e
+                        inc e
+
+                        djnz DrawNextBrick
+
+                        pop bc
+                        djnz DrawNextRow
+
+                        ld h, 0
+                        ld l, 3
+
+                        call atadd
+
+                        ld b, 128
+PaintBrick
+                        ld a, 16
+                        ld (de), a
+                        inc e
+
+                        djnz PaintBrick
+                        ret
+
+PixelToBrick
+                        srl h                    ; divide x and y by 8
+                        srl h                    ; to get them into character space
+                        srl h
+                        srl h
+                        sla h
+                        sla h
+                        sla h
+                        sla h
+
+                        srl l
+                        srl l
+                        srl l
+                        sla l
+                        sla l
+                        sla l
+
+                        ret
+RemoveBrick
+                        call pixelattradd
+
+                        ld a, 56                        ; Remove the attribute for the first half of the brick
+                        ld (de), a
+                        inc e                           ; Second half
+                        ld (de), a
+
+                        call PixelToBrick
+
+                        call scadd
+                        call DrawBrickSprite
+
+                        ret

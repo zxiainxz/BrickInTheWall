@@ -1,7 +1,14 @@
 Ball_Data:              db 24, 102, 82, 161, 129, 66, 102, 24
 Brick_Data:             db 127, 254, 128, 1, 128, 1, 128, 1, 128, 1, 128, 1, 128, 1, 127, 254
+Bat_Data:               db 255, 255, 160, 5, 160, 5, 195,195, 196, 35, 169, 85, 170, 149,255, 255
 
-xcoord:                 db 1
-ycoord:                 db 0
+ycoord:                 db 150
+xcoord:                 db 100
+
 yballdir:               db 1
 xballdir:               db 1
+
+tmpx:                   db 0
+
+baty:                   db 184
+batx:                   db 120

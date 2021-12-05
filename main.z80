@@ -7,69 +7,255 @@ Code_Start:             EQU 0x7FFD
 
                         jp Main_Start                   ; skip any includes
 
+                        include "constants.z80"
                         include "data.z80"
                         include "screenutils.z80"
                         include "spriteutils.z80"
+                        include "levelutils.z80"
 
 Main_Start:
                         xor a                           ; clear a to 0 (black)
                         out (#fe), a                    ; set border to 0
 
-Draw_Ball:
+                        call DisplayLevel
+
+Main_Loop:
+                        ld hl, (ycoord)
+                        call scadd
+
                         call DrawBallSprite             ; Draw sprite
+
+                        ld hl, (baty)
+                        call scadd
+                        call DrawBatSprite
 
                         ei
                         halt                            ; Wait
                         di
 
+                        ld hl, (ycoord)
+                        call scadd
                         call DrawBallSprite             ; Delete sprite
 
+                        ld hl, (baty)
+                        call scadd
+                        call DrawBatSprite
+
+                        call Move_BallY
+
+                        ei
+                        call ReadKeys
+                        di
+
+                        call Check_YCollision
+                        call z, Ball_HitY
+
+                        call Move_BallX
+                        call Check_XCollision
+                        call z, Ball_HitX
+
+                        jr Main_Loop
+
+                        ret
+
+Ball_HitY:
+                        call Move_BallY
+                        call Move_BallY
+                        ret
+
+Ball_HitX:
+                        call Move_BallX
+                        call Move_BallX
+                        ret
+
+Move_BallY:
                         ld a, (ycoord)                  ; Get Y coord
 
                         ld bc, (yballdir)               ; Get ball direction
                         add c                           ; move ball in that direction
 
                         ld (ycoord), a                  ; set the new y coord
-                        
-                        cp 184                          ; Check if the ball is hitting the bottom
-                        jr z, Switch_YDir
+                        ret
 
-                        cp 0                            ; Check if the ball is hitting the top
-                        jr z, Switch_YDir
-
-Switch_YDone:
-
+Move_BallX:
                         ld a, (xcoord)
                         ld bc, (xballdir)
                         add c
                         ld (xcoord), a
 
-                        cp 248
+                        ret
+
+Check_YCollision:
+                        ld a, (ycoord)
+
+                        cp 255                            ; Check if the ball is hitting the top
+                        jr z, Switch_YDir
+
+                        cp 184                          ; Check if the ball is hitting the bottom
+                        jr z, Switch_YDir               ; Lose a life
+
+                        cp 176                          ; Maybe on the bat
+                        call z, Check_BatCollision
+                        jr z, Switch_YDir
+
+                        ld hl, (ycoord)
+                        call pixelattradd
+                        ld a, (de)
+                        cp 56
+                        jr z, Check_YBelow
+                        call RemoveBrick
+                        jr Switch_YDir
+
+Check_YBelow
+                        ld a, l
+                        add 8
+                        ld l, a
+                        call pixelattradd
+                        ld a, (de)
+                        cp 56
+                        jr z, No_YHit
+                        call RemoveBrick
+                        jr Switch_YDir
+
+Check_BatCollision
+                        push bc
+
+                        ld a, (xcoord)
+                        add 4
+
+                        ld bc, (batx)
+
+                        sub c
+
+                        call AbsA
+
+                        cp 7
+                        jr nc, Check_OtherSize
+
+                        cp a
+                        jr Check_BatCollisionFinished
+
+Check_OtherSize
+                        ld a, (batx)
+                        add 16
+                        ld b, a
+
+                        ld a, (xcoord)
+                        add 4
+                        
+                        sub b
+
+                        call AbsA
+                        cp 7
+                        jr nc, Check_BatCollisionFinished
+
+                        cp a
+
+Check_BatCollisionFinished
+                        pop bc
+                        ret
+
+AbsA
+                        or a
+                        ret p
+                        neg
+                        ret
+
+No_YHit
+                        or 1                            ; Clear the z flag to indicate no hit
+                        ret
+
+Switch_YDir:
+                        ld a, (yballdir)                ; Load balldir into a
+                        neg                             ; negate direction
+                        ld (yballdir), a                ; store new direction
+                        cp a                            ; set the z flag to indicate a switch occurred
+
+                        ret
+
+Check_XCollision:
+                        ld hl, (ycoord)
+                        call pixelattradd
+                        ld a, (de)
+                        cp 56
+                        jr z, Check_XRight
+
+                        call RemoveBrick
+                        jr Switch_XDir
+
+Check_XRight
+                        ld a, h
+                        add 8
+                        ld h, a
+                        call pixelattradd
+                        ld a, (de)
+                        cp 56
+                        jr z, Check_XWalls
+
+                        call RemoveBrick
+                        jr Switch_XDir
+
+Check_XWalls
+                        ld a, (xcoord)
+
+                        cp 240
                         jr z, Switch_XDir
 
                         cp 0
                         jr z, Switch_XDir
 
-Switch_XDone:
-                        jr Draw_Ball
-
-Switch_YDir:
-                        ld a, (yballdir)                 ; Load balldir into a
-                        neg                             ; negate direction
-                        ld (yballdir), a                 ; store new direction
-
-                        jr Switch_YDone
+                        ret
 
 Switch_XDir:
                         ld a, (xballdir)
                         neg
                         ld (xballdir), a
-
-                        jr Switch_XDone
+                        cp a
 
                         ret
 
-                        ;include "data.z80"
+ReadKeys:       
+                        ld bc, Row_YUIOP
+                        in a, (c)
+
+                        rra                               ; check for P
+                        push af
+                        jr nc, Move_BatRight              ; move right
+
+                        pop af
+                        rra                               ; check for O
+                        jr nc, Move_BatLeft
+
+Move_Done:
+                        ret
+
+Move_BatLeft:
+                        ld a, (batx)
+                        cp 0
+                        jr z, Move_Done
+
+                        dec a
+                        dec a
+                        dec a
+
+                        ld (batx), a
+
+                        jr Move_Done
+
+Move_BatRight:
+                        ld a, (batx)
+                        cp 240
+                        jr z, Move_BatRightDone
+
+                        inc a
+                        inc a
+                        inc a
+
+                        ld (batx), a
+
+Move_BatRightDone
+                        pop af
+                        jr Move_Done
 
 Code_Length:            EQU $-Code_Start + 1
         SAVESNA "main.sna", Code_Start
