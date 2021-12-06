@@ -1,2 +1,4 @@
 *.sld
 *.lst
+.tmp
+*.sna
