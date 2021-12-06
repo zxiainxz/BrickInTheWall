@@ -42,6 +42,7 @@ Main_Loop:
                         call DrawBatSprite
 
                         call Move_BallY
+                        call Move_BallX
 
                         ei
                         call ReadKeys
@@ -50,7 +51,6 @@ Main_Loop:
                         call Check_YCollision
                         call z, Ball_HitY
 
-                        call Move_BallX
                         call Check_XCollision
                         call z, Ball_HitX
 
@@ -94,7 +94,7 @@ Check_YCollision:
                         cp 184                          ; Check if the ball is hitting the bottom
                         jr z, Switch_YDir               ; Lose a life
 
-                        cp 176                          ; Maybe on the bat
+                        cp 177                          ; Maybe on the bat
                         call z, Check_BatCollision
                         jr z, Switch_YDir
 
@@ -120,45 +120,23 @@ Check_YBelow
 Check_BatCollision
                         push bc
 
-                        ld a, (xcoord)
-                        add 4
+                        ld a, (xcoord)                          ; Load xcoord in a
+                                                                ; For some reason ld c, (batx) doesnt
+                                                                ; load the correct value into c
+                        ld bc, (batx)                           ; Load batx in c
 
-                        ld bc, (batx)
+                        sub c                                   ; xcoord  - batx
 
-                        sub c
+                        add 7                                   ; add 7 to prevent negative
 
-                        call AbsA
+                        cp 24                                   ; compare to total width 8 + 16
 
-                        cp 7
-                        jr nc, Check_OtherSize
-
-                        cp a
-                        jr Check_BatCollisionFinished
-
-Check_OtherSize
-                        ld a, (batx)
-                        add 16
-                        ld b, a
-
-                        ld a, (xcoord)
-                        add 4
-                        
-                        sub b
-
-                        call AbsA
-                        cp 7
                         jr nc, Check_BatCollisionFinished
 
-                        cp a
+                        cp a                                    ; there was a collision, so set z
 
 Check_BatCollisionFinished
                         pop bc
-                        ret
-
-AbsA
-                        or a
-                        ret p
-                        neg
                         ret
 
 No_YHit
@@ -198,7 +176,7 @@ Check_XRight
 Check_XWalls
                         ld a, (xcoord)
 
-                        cp 240
+                        cp 248
                         jr z, Switch_XDir
 
                         cp 0
