@@ -165,6 +165,75 @@ Shift16Left1:
                         ld h, a
                         jr Shift16Complete
 
+; CheckCollision8v16: Check for a collision between an 8 sprite and a 16 sprite
+; Inputs: a - one coord
+;         c - other coord
+; Outputs: sets z on collision
+CheckCollision8v16:
+                        sub c                                   ; xcoord  - batx
+
+                        add 7                                   ; add 7 to prevent negative
+
+                        cp 24                                   ; compare to total width 8 + 16
+
+                        ret nc
+
+                        cp a                                    ; there was a collision, so set z
+                        ret
+
+CheckCollision8v8:
+                        sub c
+                        add 7
+                        cp 16
+                        ret nc
+                        cp a
+                        ret
+
+CheckCollision8v4:
+                        sub c
+                        add 3
+                        cp 12
+                        ret nc
+                        cp a
+                        ret
+
+; CheckCollision8v16x8v8 - Checks for collisions between two objects, one 8x8 and one 16x8
+; Inputs: hl - x,y of one object
+;         bc - x,y of the second object
+; Outputs: z set on collision
+; Trashes: a
+CheckCollision8v16x8v8:
+                        ld a, l                                 ; y coord
+                        sub c                                   ; subtract other y
+                        add a, 7                                ; add max distance
+                        cp 15
+                        jr z, CheckX8v16x8v8
+                        ret nc
+CheckX8v16x8v8                       
+                        ld a, h                                 ; x coord
+                        sub b                                   ; subtract other x
+                        add 7                                   ; add max distance
+                        cp 24
+                        ret nc
+                        cp a
+                        ret
+
+CheckColllision6v16x6v8:
+                        ld a, l
+                        sub c
+                        add a, 5
+                        cp 13
+                        jr z, CheckX6v16x6v8
+                        ret nc
+CheckX6v16x6v8:
+                        ld a, h
+                        sub b
+                        add a, 5
+                        cp 22
+                        ret nc
+                        cp a
+                        ret
+
 DrawBallSprite:
                         ld ix, Ball_Data
                         call DrawSprite8x8
@@ -174,7 +243,7 @@ DrawBrickSprite:
                         ld ix, Brick_Data
                         call DrawSprite16x8
                         ret
-                        
+
 ; da na na na na na na na batsprite!
 DrawBatSprite:
                         ld ix, Bat_Data

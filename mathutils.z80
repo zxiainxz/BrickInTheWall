@@ -1,0 +1,15 @@
+; Between - decides if a number is between two numbers
+; Inputs - a: The number to check
+;          b: the bottom bound of the range
+;          c: the upper bound of the range
+Between:
+                        cp b
+                        ret c                           ; >= b
+
+                        cp c
+                        jr c, Between2                  ; < c
+                        ret nz                          ; != c
+
+Between2:
+                        cp a                            ; set z to indicate between
+                        ret

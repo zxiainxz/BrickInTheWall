@@ -12,11 +12,13 @@ Code_Start:             EQU 0x7FFD
                         include "screenutils.z80"
                         include "spriteutils.z80"
                         include "levelutils.z80"
+                        include "mathutils.z80"
 
 Main_Start:
                         xor a                           ; clear a to 0 (black)
                         out (#fe), a                    ; set border to 0
 
+                        call GenerateLevel
                         call DisplayLevel
 
 Main_Loop:
@@ -30,7 +32,10 @@ Main_Loop:
                         call DrawBatSprite
 
                         ei
-                        halt                            ; Wait
+                        ld b, 1                         ; number of halt instructions
+Wait_Timer:
+                        halt                        ; Wait
+                        djnz Wait_Timer
                         di
 
                         ld hl, (ycoord)
@@ -48,14 +53,23 @@ Main_Loop:
                         call ReadKeys
                         di
 
-                        call Check_YCollision
+                        call CheckBatCollision
                         call z, Ball_HitY
 
-                        call Check_XCollision
+                        ld hl, (ycoord)
+                        call CheckBrickCollision
+
+                        call CheckYEdgeCollision
+                        call z, Ball_HitY
+
+                        call CheckXEdgeCollision
                         call z, Ball_HitX
 
                         jr Main_Loop
 
+Ball_Hit:
+                        call Ball_HitY
+                        call Ball_HitX
                         ret
 
 Ball_HitY:
@@ -66,6 +80,43 @@ Ball_HitY:
 Ball_HitX:
                         call Move_BallX
                         call Move_BallX
+                        ret
+
+CheckBatCollision:
+                        ld hl, (ycoord)                 ; ball in hl
+
+                        ld a, l                         ; Check if ball is near bat
+                        cp 177                          ; this is when the bottom of the ball crosses the bat line
+
+                        ret c                           ; return if < 177, ball isn't near bat
+
+                        push bc
+                        ld bc, (baty)
+
+                        call CheckCollision8v16x8v8
+
+                        pop bc
+                        jr z, Switch_YDir
+                        ret
+
+CheckYEdgeCollision:
+                        ld a, (ycoord)
+
+                        cp 255                            ; Check if the ball is hitting the top
+                        jr z, Switch_YDir
+
+                        cp 184                          ; Check if the ball is hitting the bottom
+                        jr z, Switch_YDir               ; Lose a life
+                        ret
+
+CheckXEdgeCollision:
+                        ld a, (xcoord)
+
+                        cp 0
+                        jr z, Switch_XDir
+
+                        cp 247
+                        jr z, Switch_XDir
                         ret
 
 Move_BallY:
@@ -94,8 +145,13 @@ Check_YCollision:
                         cp 184                          ; Check if the ball is hitting the bottom
                         jr z, Switch_YDir               ; Lose a life
 
-                        cp 177                          ; Maybe on the bat
-                        call z, Check_BatCollision
+                        push bc
+                        ld hl, (ycoord)                 ; ball in hl
+                        ld bc, (baty)
+
+                        call CheckCollision8v16x8v8
+
+                        pop bc
                         jr z, Switch_YDir
 
                         ld hl, (ycoord)
@@ -117,28 +173,6 @@ Check_YBelow
                         call RemoveBrick
                         jr Switch_YDir
 
-Check_BatCollision
-                        push bc
-
-                        ld a, (xcoord)                          ; Load xcoord in a
-                                                                ; For some reason ld c, (batx) doesnt
-                                                                ; load the correct value into c
-                        ld bc, (batx)                           ; Load batx in c
-
-                        sub c                                   ; xcoord  - batx
-
-                        add 7                                   ; add 7 to prevent negative
-
-                        cp 24                                   ; compare to total width 8 + 16
-
-                        jr nc, Check_BatCollisionFinished
-
-                        cp a                                    ; there was a collision, so set z
-
-Check_BatCollisionFinished
-                        pop bc
-                        ret
-
 No_YHit
                         or 1                            ; Clear the z flag to indicate no hit
                         ret
@@ -150,6 +184,15 @@ Switch_YDir:
                         cp a                            ; set the z flag to indicate a switch occurred
 
                         ret
+
+Switch_XDir:
+                        ld a, (xballdir)
+                        neg
+                        ld (xballdir), a
+                        cp a
+
+                        ret
+
 
 Check_XCollision:
                         ld hl, (ycoord)
@@ -179,16 +222,9 @@ Check_XWalls
                         cp 248
                         jr z, Switch_XDir
 
-                        cp 0
+                        or a                                    ; compare a to 0 but faster than cp 0
+                                                                ; but modifies a
                         jr z, Switch_XDir
-
-                        ret
-
-Switch_XDir:
-                        ld a, (xballdir)
-                        neg
-                        ld (xballdir), a
-                        cp a
 
                         ret
 
@@ -212,9 +248,7 @@ Move_BatLeft:
                         cp 0
                         jr z, Move_Done
 
-                        dec a
-                        dec a
-                        dec a
+                        sub 3
 
                         ld (batx), a
 
@@ -225,9 +259,7 @@ Move_BatRight:
                         cp 240
                         jr z, Move_BatRightDone
 
-                        inc a
-                        inc a
-                        inc a
+                        add 3
 
                         ld (batx), a
 

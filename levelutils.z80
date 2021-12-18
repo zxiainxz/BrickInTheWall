@@ -1,72 +1,184 @@
+; GenerateLevel - Generate a basic 16x4 level
+GenerateLevel
+                        ld ix, LevelMap                                 ; index LevelMap
+                        ld b, 4                                         ; 4 rows
+                        ld l, 24                                        ; initial y coord is 24
+GenerateNextRow
+                        ld a, 16                                        ; 16 bricks per row
+                        ld h, 0                                         ; initial x coord is 0
+
+GenerateNextBlock
+                        ld (ix), hl                                     ; store x,y for this brick
+                        ld (ix+2), 16                                   ; store the brick colour (0 for no brick)
+
+                        ex af, af'                                      ; switch to shadow a'
+                        ld a, h                                         ; add 16 to h
+                        add 16
+                        ld h, a
+                        ex af, af'                                      ; switch back to brick count in a
+
+                        dec a                                           ; decrease numbers bricks left in the row
+                        ld de, 3                                        
+                        add ix, de                                      ; move to next brick struct
+                        cp 0                                            ; check if a is 0
+                        jr z, MoveToNextRow                             ; go to next row if it is
+                        jr GenerateNextBlock                            ; otherwise next brick
+
+MoveToNextRow
+                        ld a, l                                         ; add 8 pixels to the row
+                        add 8
+                        ld l, a
+                        djnz GenerateNextRow                            ; make next row if there is one
+                        ret
+
+; DispalyLevel - Displays the level stored in LevelMap
 DisplayLevel:
-                        ld h, 0
-                        ld l, 24
+                        ld ix, LevelMap                                 ; index LevelMap
+                        ld b, 64                                        ; brick count
 
-                        call scadd
+DisplayNextBrick:
+                        ld l, (ix)                                      ; y in l
+                        ld h, (ix + 1)                                  ; x in h
+                        call scadd                                      ; calculate screen addr for h,l
+                                                                        ; de contains screen address
+                        push ix                                         ; store ix, hl
+                        push hl                                         ; should move to DrawBrickSprite
+                        call DrawBrickSprite                            ; Draw the brick
+                        pop hl
+                        pop ix
 
-                        ld b, 4
-
-DrawNextRow
-                        push bc
-
-                        ld b, 16
-
-DrawNextBrick
-                        push de
-                        call DrawBrickSprite
-                        pop de
-
-                        inc e
-                        inc e
-
-                        djnz DrawNextBrick
-
-                        pop bc
-                        djnz DrawNextRow
-
-                        ld h, 0
-                        ld l, 3
-
-                        call atadd
-
-                        ld b, 128
-PaintBrick
-                        ld a, 16
+                        call pixelattradd                               ; get attr address for h,l in de
+                        ld a, (ix+2)                                    ; brick colour in a        
+                        ld (de), a                                      ; put the colour in two attrs
+                        inc de                                          
                         ld (de), a
-                        inc e
 
-                        djnz PaintBrick
+                        ld de, 3                                        ; next brick struct
+                        add ix, de
+                        djnz DisplayNextBrick                           ; display next brick if it exists
                         ret
 
-PixelToBrick
-                        srl h                    ; divide x and y by 8
-                        srl h                    ; to get them into character space
-                        srl h
-                        srl h
-                        sla h
-                        sla h
-                        sla h
-                        sla h
+; CheckBrickCollision - Check if the ball has collided with any of the bricks
+; Inputs: hl - x, y of the ball
+; Outputs: z - set to indicate collision
+CheckBrickCollision:
+                        ld ix, LevelMap                                 ; Index LevelMap
+                        ld b, 64                                        ; number of bricks
 
-                        srl l
-                        srl l
-                        srl l
-                        sla l
-                        sla l
-                        sla l
+CheckBrick:
+                        ld a, (ix + 2)                                  ; load brick colour to a
+                        cp 0                                            ; is it 0
+                        jr z, CheckNextBrick                            ; skip missing brick
+
+                        push bc                                         ; store the brick counter
+                                                                        ; ld bc isn't working correctly (FIXME: Why?)
+                        ld c, (ix)                                      ; y in c
+                        ld b, (ix + 1)                                  ; x in b
+
+                        call CheckCollision8v16x8v8                     ; Check if the ball has entered the 8x8 
+                        pop bc                                          ; restore the brick count
+
+                        jr z, BrickCollision                            ; check the fine grained collisions
+CheckNextBrick:
+                        ld de, 3                                        ; move to the next brick struct
+                        add ix, de
+
+                        djnz CheckBrick                                 ; check next brick
+                        ret
+                        
+BrickCollision:
+                        ld l, (ix)                              ; collided brick x,y in hl
+                        ld h, (ix + 1)
+
+                        call CheckFineGrainCollision            ; check fine grained collision
+                        ret nz                                  ; check if we actually hit before removing brick
+
+                        call RemoveBrick                        ; remove the brick
 
                         ret
+
+CheckFineGrainCollision:
+                                                                ; first check if the centre of the ball
+                                                                ; on the y axis is between bounds of the brick
+
+                        ld b, l                                 ; lower brick y in b
+                        ld a, l                                 ; add 8
+                        add 8
+                        ld c, a                                 ; higher brick y in c
+
+                        ld a, (ycoord)                          ; ball y in a
+                        add 4                                   ; get centre of ball
+
+                        call Between                            ; is centre of ball between the brick y?
+                        jr nz, CheckDirectionSwitch2            ; no? then check the x side
+
+                        call Switch_XDir                        ; if ball y is between the brick y then
+                        call Ball_HitX                          ; it hit on the side, so change x direction
+                        cp a                                    ; set z to indicate a collision
+                        ret                                     ; return because if can't hit anywhere else
+
+CheckDirectionSwitch2:
+                                                                ; next check if the centre of the ball
+                                                                ; on the x axis is between the bounds of the brick
+
+                        ld b, h                                 ; lower brick x in b
+                        ld a, h                                 ; add 16
+                        add 16
+                        ld c, a                                 ; higher brick x in c
+
+                        ld a, (xcoord)                          ; ball x in a
+                        add 4                                   ; centre of the ball
+
+                        call Between                            ; is between x bounds?
+                        jr nz, CheckInnerBox                    ; no? check the inner box
+
+                        call Switch_YDir                        ; if ball x is between brick x then
+                        call Ball_HitY                          ; it hit on the top or bottom
+                                                                ; so switch y direction
+                        cp a                                    ; set z to indicate a colision
+                        ret                                     ; return because it can't hit anywhere else
+
+CheckInnerBox:
+                                                                ; inner box is the 6x6 box inside the 8x8
+                        ld b, (xcoord)
+                        ld c, (ycoord)
+                        inc b                                   ; inset the hit box
+                        inc c
+
+                        call CheckColllision6v16x6v8            ; check inner box
+                        ret nz                                  ; Didn't collide, so return
+
+                        call Switch_YDir                        ; Hitting the inner box means it hit on the corner
+                        call Switch_XDir                        ; so switch both directions
+                        call Ball_HitY
+                        call Ball_HitX
+
+                        cp a                                    ; set z to indicate a collision happened
+
+                        ret
+
+; RemoveBrick - Remove the brick from the screen
+; Inputs: h - x coord of the brick
+;         l - y coord of the brick
+;         ix - index to brick structure
 RemoveBrick
-                        call pixelattradd
+                        push hl                                 ; Store hl cos stuff trashes it
+                        xor a                                   ; zero a
+                        ld (ix+2), a                            ; set the colour of the brick to 0
+                                                                ; to indicate that it's missing
 
-                        ld a, 56                        ; Remove the attribute for the first half of the brick
+                        call pixelattradd                       ; get the attr address for the brick
+                        ld a, 56                                ; 56 is white paper
+                        ld (de), a                              ; put it into the two adjacent character spaces
+                        inc e
                         ld (de), a
-                        inc e                           ; Second half
-                        ld (de), a
 
-                        call PixelToBrick
+                        call scadd                              ; get the screen address for the pixel
 
-                        call scadd
-                        call DrawBrickSprite
-
+                        push ix
+                        call DrawBrickSprite                    ; Draw the brick over the old brick to remove it
+                        pop ix
+                        pop hl
                         ret
+
+LevelMap:               BLOCK 192, 0
