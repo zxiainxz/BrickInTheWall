@@ -32,7 +32,8 @@
 			"disassemblerArgs": {
 				"esxdosRst": true
 			},
-			"load": "${fileBasenameNoExtension}.sna",
+			// "load": "${fileBasenameNoExtension}.sna",
+			"load": "main.sna",
 			"skipInterrupt": false,
 			"startAutomatically": true,
 			"preLaunchTask": "sjasmplus"

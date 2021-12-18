@@ -10,7 +10,8 @@
             "args": [
 				"--lst=${fileDirname}/${fileBasenameNoExtension}.lst",
                 "--sld=${fileDirname}/${fileBasenameNoExtension}.sld",
-            	"${file}"                                   
+            	//"${file}"                                   
+                "main.z80"
 			],
             "group": {
                 "kind": "build",
