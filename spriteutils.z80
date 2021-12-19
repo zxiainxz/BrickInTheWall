@@ -249,3 +249,31 @@ DrawBatSprite:
                         ld ix, Bat_Data
                         call DrawSprite16x8
                         ret
+
+DrawAllSprites:
+                        ld hl, (ycoord)
+                        call scadd
+                        call DrawBallSprite             ; Draw sprite
+
+                        ld hl, (ycoord)
+                        ld (oldycoord), hl
+
+                        ld hl, (baty)
+                        call scadd
+                        call DrawBatSprite
+
+                        ld hl, (baty)
+                        ld (oldbaty), hl
+
+                        ret
+
+EraseAllSprites:
+                        ld hl, (oldycoord)
+                        call scadd
+                        call DrawBallSprite             ; Erase sprite
+
+                        ld hl, (oldbaty)
+                        call scadd
+                        call DrawBatSprite
+
+                        ret

@@ -5,6 +5,9 @@ Bat_Data:               db 255, 255, 160, 5, 160, 5, 195,195, 196, 35, 169, 85, 
 ycoord:                 db 60
 xcoord:                 db 100
 
+oldycoord:              db 0
+oldxcoord:              db 0
+
 yballdir:               db 1
 xballdir:               db 1
 
@@ -12,3 +15,6 @@ tmpx:                   db 0
 
 baty:                   db 184
 batx:                   db 120
+
+oldbaty:                db 0
+oldbatx:                db 0

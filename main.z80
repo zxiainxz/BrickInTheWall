@@ -1,6 +1,8 @@
         DEVICE ZXSPECTRUM48                     ; sjasmplus directive for SAVESNA at end
 
 Stack_Top:              EQU 0xFFF0
+IM2_Table:              EQU 0xFE00
+IM2_Jmp:                EQU 0xFDFD
 Code_Start:             EQU 0x7FFD
 
                         ORG Code_Start
@@ -21,51 +23,82 @@ Main_Start:
                         call GenerateLevel
                         call DisplayLevel
 
+                        call DrawAllSprites
+
+                        call InitialiseInterrupt                        ; Switch to interrupts
+
 Main_Loop:
-                        ld hl, (ycoord)
-                        call scadd
 
-                        call DrawBallSprite             ; Draw sprite
-
-                        ld hl, (baty)
-                        call scadd
-                        call DrawBatSprite
-
-                        ei
-                        ld b, 1                         ; number of halt instructions
+                        ld b, 1                                         ; number of halt instructions
 Wait_Timer:
-                        halt                        ; Wait
+                        halt                                            ; Wait
                         djnz Wait_Timer
-                        di
-
-                        ld hl, (ycoord)
-                        call scadd
-                        call DrawBallSprite             ; Delete sprite
-
-                        ld hl, (baty)
-                        call scadd
-                        call DrawBatSprite
 
                         call Move_BallY
                         call Move_BallX
 
-                        ei
                         call ReadKeys
-                        di
 
                         call CheckBatCollision
-                        call z, Ball_HitY
 
                         ld hl, (ycoord)
                         call CheckBrickCollision
 
                         call CheckYEdgeCollision
-                        call z, Ball_HitY
 
                         call CheckXEdgeCollision
-                        call z, Ball_HitX
 
                         jr Main_Loop
+
+InitialiseInterrupt:
+                        di
+                        ld hl, Interrupt
+                        ld ix, 0xfff0
+                        ld (ix+04h), 0xc3
+                        ld (ix+05h), l
+                        ld (ix+06h), h
+                        ld (ix+0fh), 0x18
+                        ld a, 0x39
+                        ld i, a
+                        im 2
+                        ei
+
+Interrupt:
+                        di
+                        push af
+                        push bc
+                        push de
+                        push hl
+                        push ix
+                        exx
+                        ex af, af'
+                        push af
+                        push bc
+                        push de
+                        push hl
+                        push iy
+
+                        ld a, 2
+                        out (#fe), a                                    ; red border
+
+                        call EraseAllSprites
+                        
+                        call DrawAllSprites
+
+                        pop iy
+                        pop hl
+                        pop de
+                        pop bc
+                        pop af
+                        exx
+                        ex af,af'
+                        pop ix
+                        pop hl
+                        pop de
+                        pop bc
+                        pop af
+                        ei
+                        ret
 
 Ball_Hit:
                         call Ball_HitY
@@ -96,7 +129,8 @@ CheckBatCollision:
                         call CheckCollision8v16x8v8
 
                         pop bc
-                        jr z, Switch_YDir
+                        call z, Switch_YDir
+                        jr z, Ball_HitY
                         ret
 
 CheckYEdgeCollision:
@@ -106,7 +140,8 @@ CheckYEdgeCollision:
                         jr z, Switch_YDir
 
                         cp 184                          ; Check if the ball is hitting the bottom
-                        jr z, Switch_YDir               ; Lose a life
+                        call z, Switch_YDir               ; Lose a life
+                        jr z, Ball_HitY
                         ret
 
 CheckXEdgeCollision:
@@ -116,11 +151,13 @@ CheckXEdgeCollision:
                         jr z, Switch_XDir
 
                         cp 247
-                        jr z, Switch_XDir
+                        call z, Switch_XDir
+                        jr z, Ball_HitX
                         ret
 
 Move_BallY:
                         ld a, (ycoord)                  ; Get Y coord
+                        ld (oldycoord), a
 
                         ld bc, (yballdir)               ; Get ball direction
                         add c                           ; move ball in that direction
@@ -130,6 +167,8 @@ Move_BallY:
 
 Move_BallX:
                         ld a, (xcoord)
+                        ld (oldxcoord), a
+
                         ld bc, (xballdir)
                         add c
                         ld (xcoord), a
@@ -239,15 +278,16 @@ ReadKeys:
                         pop af
                         rra                               ; check for O
                         jr nc, Move_BatLeft
-
 Move_Done:
                         ret
 
 Move_BatLeft:
                         ld a, (batx)
+
                         cp 0
                         jr z, Move_Done
 
+                        ld (oldbatx), a
                         sub 3
 
                         ld (batx), a
@@ -256,9 +296,11 @@ Move_BatLeft:
 
 Move_BatRight:
                         ld a, (batx)
+
                         cp 240
                         jr z, Move_BatRightDone
 
+                        ld (oldbatx), a
                         add 3
 
                         ld (batx), a
