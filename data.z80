@@ -1,20 +1,37 @@
+; Sprites
 Ball_Data:              db 24, 102, 82, 161, 129, 66, 102, 24
 Brick_Data:             db 127, 254, 128, 1, 128, 1, 128, 1, 128, 1, 128, 1, 128, 1, 127, 254
 Bat_Data:               db 255, 255, 160, 5, 160, 5, 195,195, 196, 35, 169, 85, 170, 149,255, 255
 
-ycoord:                 db 60
-xcoord:                 db 100
+; Level store
+; 16*rows*3
+RowColours:             db 8, 16, 24, 32, 48
+LevelMap:               BLOCK 240, 0                            ; (x, y, colour)
+
+; variables
+ycoord:                 db INITIAL_BALL_Y                                  ; ball y
+xcoord:                 db INITIAL_BALL_X                                  ; ball x
 
 oldycoord:              db 0
 oldxcoord:              db 0
 
-yballdir:               db 1
-xballdir:               db 1
+yballdir:               db 0
+xballdir:               db 0
 
 tmpx:                   db 0
 
-baty:                   db 184
-batx:                   db 120
+baty:                   db INITIAL_BAT_Y
+batx:                   db INITIAL_BAT_X
 
 oldbaty:                db 0
 oldbatx:                db 0
+
+lives:                  db INITIAL_LIVES
+
+currentloop:            db 0
+mainloops:              dw StartScreenLoop, GameLoop
+
+breakthru_string:       byte "BREAKTHRU\0"
+anykey_string:          byte "PRESS ANY KEY TO START\0"
+
+                        include "anarchist-font.z80"

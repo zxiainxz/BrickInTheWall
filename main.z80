@@ -15,11 +15,34 @@ Code_Start:             EQU 0x7FFD
                         include "spriteutils.z80"
                         include "levelutils.z80"
                         include "mathutils.z80"
+                        include "random.z80"
+                        include "startscreen.z80"
+                        include "fontutils.z80"
 
 Main_Start:
                         xor a                           ; clear a to 0 (black)
                         out (#fe), a                    ; set border to 0
 
+SwitchMainLoop:
+                        ld h, 0
+                        ld a, (currentloop)
+                        ld l, a
+                        add hl, hl
+                        ld de, mainloops
+                        add hl, de
+                        ld a, (hl)
+                        inc hl
+                        ld h, (hl)
+                        ld l, a
+
+                        jp (hl)
+                        ret
+
+GameLoop:
+                        ld hl, lives
+                        ld (hl), INITIAL_LIVES
+
+                        call ClearScreen
                         call GenerateLevel
                         call DisplayLevel
 
@@ -27,7 +50,7 @@ Main_Start:
 
                         call InitialiseInterrupt                        ; Switch to interrupts
 
-Main_Loop:
+MainGameLoop:
 
                         ld b, 1                                         ; number of halt instructions
 Wait_Timer:
@@ -48,7 +71,43 @@ Wait_Timer:
 
                         call CheckXEdgeCollision
 
-                        jr Main_Loop
+                        call CheckLoseBall
+                        jr z, RestartLife
+
+                        jr MainGameLoop
+
+RestartLife:
+                        ld a, INITIAL_BAT_X
+                        ld (batx), a
+                        ld a, INITIAL_BALL_Y
+                        ld (ycoord), a
+                        ld a, INITIAL_BALL_X
+                        ld (xcoord), a
+                        xor a
+                        ld (yballdir), a
+                        ld (xballdir), a
+
+                        ld a, (lives)
+                        cp 0
+                        jr z, RestartLevel
+
+                        jr MainGameLoop
+
+CheckLoseBall:
+                        ld a, (ycoord)
+                        cp 184                          ; Check if the ball is hitting the bottom
+                        ret nz
+
+                        ld hl, lives
+                        dec (hl)
+
+                        cp a                            ; set z to indicate a loss
+                        ret
+
+RestartLevel:
+                        xor a
+                        ld (currentloop), a
+                        jr SwitchMainLoop
 
 InitialiseInterrupt:
                         di
@@ -78,7 +137,7 @@ Interrupt:
                         push hl
                         push iy
 
-                        ld a, 2
+                        ld a, 5
                         out (#fe), a                                    ; red border
 
                         call EraseAllSprites
@@ -123,24 +182,53 @@ CheckBatCollision:
 
                         ret c                           ; return if < 177, ball isn't near bat
 
-                        push bc
                         ld bc, (baty)
 
                         call CheckCollision8v16x8v8
+                        ret nz
 
-                        pop bc
+                        ld a, b
+                        add 14
+                        ld c, a
+
+                        ld a, b
+                        add 2
+                        ld b, a
+
+                        ld a, (xcoord)
+                        add 4
+                        
+                        cp b
+                        jr c, GoLeft
+
+                        cp c
+                        jr nc, GoRight
+
+                        cp a
+
                         call z, Switch_YDir
                         jr z, Ball_HitY
                         ret
+
+GoLeft:
+                        ld a, -1
+                        ld (xballdir), a
+
+                        call Switch_YDir
+                        jr Ball_HitY
+
+GoRight:
+                        ld a, 1
+                        ld (xballdir), a
+
+                        call Switch_YDir
+                        jr Ball_HitY
 
 CheckYEdgeCollision:
                         ld a, (ycoord)
 
                         cp 255                            ; Check if the ball is hitting the top
-                        jr z, Switch_YDir
-
-                        cp 184                          ; Check if the ball is hitting the bottom
-                        call z, Switch_YDir               ; Lose a life
+                        call z, Switch_YDir
                         jr z, Ball_HitY
                         ret
 
@@ -175,47 +263,6 @@ Move_BallX:
 
                         ret
 
-Check_YCollision:
-                        ld a, (ycoord)
-
-                        cp 255                            ; Check if the ball is hitting the top
-                        jr z, Switch_YDir
-
-                        cp 184                          ; Check if the ball is hitting the bottom
-                        jr z, Switch_YDir               ; Lose a life
-
-                        push bc
-                        ld hl, (ycoord)                 ; ball in hl
-                        ld bc, (baty)
-
-                        call CheckCollision8v16x8v8
-
-                        pop bc
-                        jr z, Switch_YDir
-
-                        ld hl, (ycoord)
-                        call pixelattradd
-                        ld a, (de)
-                        cp 56
-                        jr z, Check_YBelow
-                        call RemoveBrick
-                        jr Switch_YDir
-
-Check_YBelow
-                        ld a, l
-                        add 8
-                        ld l, a
-                        call pixelattradd
-                        ld a, (de)
-                        cp 56
-                        jr z, No_YHit
-                        call RemoveBrick
-                        jr Switch_YDir
-
-No_YHit
-                        or 1                            ; Clear the z flag to indicate no hit
-                        ret
-
 Switch_YDir:
                         ld a, (yballdir)                ; Load balldir into a
                         neg                             ; negate direction
@@ -232,41 +279,6 @@ Switch_XDir:
 
                         ret
 
-
-Check_XCollision:
-                        ld hl, (ycoord)
-                        call pixelattradd
-                        ld a, (de)
-                        cp 56
-                        jr z, Check_XRight
-
-                        call RemoveBrick
-                        jr Switch_XDir
-
-Check_XRight
-                        ld a, h
-                        add 8
-                        ld h, a
-                        call pixelattradd
-                        ld a, (de)
-                        cp 56
-                        jr z, Check_XWalls
-
-                        call RemoveBrick
-                        jr Switch_XDir
-
-Check_XWalls
-                        ld a, (xcoord)
-
-                        cp 248
-                        jr z, Switch_XDir
-
-                        or a                                    ; compare a to 0 but faster than cp 0
-                                                                ; but modifies a
-                        jr z, Switch_XDir
-
-                        ret
-
 ReadKeys:       
                         ld bc, Row_YUIOP
                         in a, (c)
@@ -278,6 +290,18 @@ ReadKeys:
                         pop af
                         rra                               ; check for O
                         jr nc, Move_BatLeft
+
+                        ld bc, Row_SpaceSymMNB
+                        in a, (c)
+
+                        and 1
+                        ret nz
+
+                        ld a, INITIAL_BALL_Y_DIR
+                        ld (yballdir), a
+                        ld a, INITIAL_BALL_X_DIR
+                        ld (xballdir), a
+
 Move_Done:
                         ret
 
@@ -292,6 +316,11 @@ Move_BatLeft:
 
                         ld (batx), a
 
+                        ld a, (yballdir)
+                        cp 0
+
+                        call z, MoveBallToBat
+
                         jr Move_Done
 
 Move_BatRight:
@@ -305,9 +334,20 @@ Move_BatRight:
 
                         ld (batx), a
 
+                        ld a, (yballdir)
+                        cp 0
+
+                        call z, MoveBallToBat
+
 Move_BatRightDone
                         pop af
                         jr Move_Done
+
+MoveBallToBat:
+                        ld a, (batx)
+                        add 4
+                        ld (xcoord), a
+                        ret
 
 Code_Length:            EQU $-Code_Start + 1
         SAVESNA "main.sna", Code_Start

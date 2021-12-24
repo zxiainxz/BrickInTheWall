@@ -1,25 +1,39 @@
 ; GenerateLevel - Generate a basic 16x4 level
 GenerateLevel
                         ld ix, LevelMap                                 ; index LevelMap
-                        ld b, 4                                         ; 4 rows
-                        ld l, 24                                        ; initial y coord is 24
+                        ld de, RowColours
+
+                        ld b, NUMBER_ROWS                               ; 4 rows
+                        ld l, ROW_START                                       ; initial y coord is 24
 GenerateNextRow
-                        ld a, 16                                        ; 16 bricks per row
+                        ld a, NUMBER_BRICKS_PER_ROW                            ; 16 bricks per row
                         ld h, 0                                         ; initial x coord is 0
 
 GenerateNextBlock
                         ld (ix), hl                                     ; store x,y for this brick
-                        ld (ix+2), 16                                   ; store the brick colour (0 for no brick)
 
-                        ex af, af'                                      ; switch to shadow a'
+                        ex af, af'                                      ; switch to shadow a' to save the counter
+
+                        push hl
+                        push de
+                        pop hl
+
+                        ld a, (hl)
+                        ld (ix+2), a                                    ; store the brick colour (0 for no brick)
+                        pop hl
+
                         ld a, h                                         ; add 16 to h
                         add 16
                         ld h, a
                         ex af, af'                                      ; switch back to brick count in a
 
                         dec a                                           ; decrease numbers bricks left in the row
+
+                        push de
                         ld de, 3                                        
                         add ix, de                                      ; move to next brick struct
+                        pop de
+
                         cp 0                                            ; check if a is 0
                         jr z, MoveToNextRow                             ; go to next row if it is
                         jr GenerateNextBlock                            ; otherwise next brick
@@ -28,13 +42,14 @@ MoveToNextRow
                         ld a, l                                         ; add 8 pixels to the row
                         add 8
                         ld l, a
+                        inc e
                         djnz GenerateNextRow                            ; make next row if there is one
                         ret
 
 ; DispalyLevel - Displays the level stored in LevelMap
 DisplayLevel:
                         ld ix, LevelMap                                 ; index LevelMap
-                        ld b, 64                                        ; brick count
+                        ld b, NUMBER_BRICKS                                        ; brick count
 
 DisplayNextBrick:
                         ld l, (ix)                                      ; y in l
@@ -63,7 +78,7 @@ DisplayNextBrick:
 ; Outputs: z - set to indicate collision
 CheckBrickCollision:
                         ld ix, LevelMap                                 ; Index LevelMap
-                        ld b, 64                                        ; number of bricks
+                        ld b, NUMBER_BRICKS                                        ; number of bricks
 
 CheckBrick:
                         ld a, (ix + 2)                                  ; load brick colour to a
@@ -91,11 +106,11 @@ BrickCollision:
                         ld h, (ix + 1)
 
                         call CheckFineGrainCollision            ; check fine grained collision
-                        ret nz                                  ; check if we actually hit before removing brick
+                        jr CheckNextBrick                       ; check if we actually hit before removing brick
 
                         call RemoveBrick                        ; remove the brick
 
-                        ret
+                        ret                                     ; ret here will stop checking any other bricks
 
 CheckFineGrainCollision:
                                                                 ; first check if the centre of the ball
@@ -123,7 +138,7 @@ CheckDirectionSwitch2:
 
                         ld b, h                                 ; lower brick x in b
                         ld a, h                                 ; add 16
-                        add 16
+                        add 15
                         ld c, a                                 ; higher brick x in c
 
                         ld a, (xcoord)                          ; ball x in a
@@ -180,5 +195,3 @@ RemoveBrick
                         pop ix
                         pop hl
                         ret
-
-LevelMap:               BLOCK 192, 0

@@ -1,0 +1,29 @@
+StartScreenLoop:
+                        call ClearScreen
+                        
+                        ld a, 1
+                        out (#fe), a
+
+                        ld hl, 0x5c3c                           ; 92, 60
+
+                        ld bc, breakthru_string
+                        call DisplayString
+
+                        ld hl, 0x285c                           ; 40, 92
+                        ld bc, anykey_string
+                        call DisplayString
+
+WaitForStartKey:
+                        ei
+                        ld hl, 23560
+                        ld (hl), 0
+
+WaitForKeyLoop:
+                        ld a, (hl)
+                        cp 0
+                        jr z, WaitForKeyLoop
+
+                        ld a, 1
+                        ld (currentloop), a
+
+                        jr SwitchMainLoop

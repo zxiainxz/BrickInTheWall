@@ -125,3 +125,17 @@ pixelattradd:
 
                         pop hl
                         ret
+
+
+ClearScreen:
+                        ld a, 56
+                        ld hl, $4000
+                        ld de, $4001
+                        ld bc, 6144
+                        ld (hl), l
+                        ldir
+                        ld bc, 767
+                        ld (hl), a
+                        ldir
+                        ret
+

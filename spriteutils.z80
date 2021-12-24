@@ -174,7 +174,7 @@ CheckCollision8v16:
 
                         add 7                                   ; add 7 to prevent negative
 
-                        cp 24                                   ; compare to total width 8 + 16
+                        cp 23                                   ; compare to total width 8 + 16
 
                         ret nc
 
@@ -184,7 +184,7 @@ CheckCollision8v16:
 CheckCollision8v8:
                         sub c
                         add 7
-                        cp 16
+                        cp 15
                         ret nc
                         cp a
                         ret
@@ -192,7 +192,7 @@ CheckCollision8v8:
 CheckCollision8v4:
                         sub c
                         add 3
-                        cp 12
+                        cp 11
                         ret nc
                         cp a
                         ret
@@ -213,7 +213,7 @@ CheckX8v16x8v8
                         ld a, h                                 ; x coord
                         sub b                                   ; subtract other x
                         add 7                                   ; add max distance
-                        cp 24
+                        cp 23
                         ret nc
                         cp a
                         ret
@@ -229,7 +229,7 @@ CheckX6v16x6v8:
                         ld a, h
                         sub b
                         add a, 5
-                        cp 22
+                        cp 21
                         ret nc
                         cp a
                         ret

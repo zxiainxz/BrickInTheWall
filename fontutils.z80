@@ -1,0 +1,57 @@
+; hl - x, y
+; a - ascii code
+DisplayChar:
+                        cp 58
+                        jr c, NumberChar
+
+                        sub 65
+                        ld ix, fontCaps
+                        jr CharDone
+
+NumberChar:
+                        sub 32
+                        ld ix, fontNumbers
+CharDone:                        
+
+                        add a
+                        add a
+                        add a
+
+                        push de
+                        ld d, 0
+                        ld e, a
+
+                        add ix, de
+                        pop de
+
+                        call DrawSprite8x8
+
+                        ret
+
+; h, l: x, y
+; bc: string address 0 terminated
+DisplayString:
+                        push hl
+DisplayNextChar:
+                        ld a, (bc)
+                        cp 0
+                        jr z, DisplayStringDone
+
+                        cp 32
+                        jr z, MoveToNextChar
+                        call scadd
+                        
+                        push bc
+                        call DisplayChar
+                        pop bc
+                        
+MoveToNextChar:
+                        ld a, h
+                        add 8
+                        ld h, a
+                        inc c
+                        jr DisplayNextChar
+
+DisplayStringDone:
+                        pop hl
+                        ret
