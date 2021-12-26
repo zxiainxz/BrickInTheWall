@@ -9,14 +9,22 @@
 			"type": "dezog",
 			"request": "launch",
 			"remoteType": "zrcp",
+			// "remoteType": "cspect",
 			"zrcp": {
 				"hostname": "localhost",
 				"port": 10000
+			},
+			"cspect": {
+				"hostname": "localhost",
+				"port": 11000
 			},
 			"sjasmplus": [
 				{
 					"path": "${fileBasenameNoExtension}.sld",
 				}
+			],
+			"commandsAfterLaunch": [
+				"-LOGPOINT enable"
 			],
 			"topOfStack": "Stack_Top",
 			"rootFolder": "${fileDirname}",
