@@ -13,15 +13,19 @@ ROW_START                       EQU 32
 NUMBER_BRICKS                   EQU NUMBER_ROWS * NUMBER_BRICKS_PER_ROW
 
 INITIAL_BALL_Y                  EQU 176
-INITIAL_BALL_X                  EQU 124
+INITIAL_BALL_X                  EQU 124 ; 142
+INITIAL_BALL_COORDS             EQU 0x7CB0
 
 INITIAL_BALL_Y_DIR              EQU -1
 INITIAL_BALL_X_DIR              EQU 1
 
 INITIAL_BAT_Y                   EQU 184
 INITIAL_BAT_X                   EQU 120
+INITIAL_BAT_COORDS              EQU 0x78B8
 
 INITIAL_LIVES                   EQU 3
 
 START_SCREEN                    EQU 0
 GAME_SCREEN                     EQU 1
+
+MAX_SPRITES                     EQU 10

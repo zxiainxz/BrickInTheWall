@@ -1,0 +1,340 @@
+GameLoopInitialise:
+                        ld hl, lives
+                        ld (hl), INITIAL_LIVES
+
+                        call ClearScreen
+                        call GenerateLevel
+                        call DisplayLevel
+
+                        call LoadSprites
+                        call DrawAllSprites
+                        jp InitialiseFinished
+
+MainGameLoop:
+
+                        ld b, 1                                         ; number of halt instructions
+Wait_Timer:
+                        halt                                            ; Wait
+                        djnz Wait_Timer
+
+                        call Move_BallY
+                        call Move_BallX
+
+                        call ReadKeys
+
+                        ld ix, spritetable
+                        push ix
+                        call CheckBatCollision
+                        pop ix
+
+                        ld hl, (ix+SPRITETABLE_Y)
+
+                        push ix
+                        call CheckBrickCollision
+                        pop ix
+
+                        ld a, (LevelBlockCount)
+                        cp 0
+                        jr z, LevelComplete
+
+                        push ix
+                        call CheckYEdgeCollision
+                        pop ix
+
+                        push ix
+                        call CheckXEdgeCollision
+                        pop ix
+
+                        call CheckLoseBall
+                        jr z, RestartLife
+
+                        jr MainGameLoop
+
+LevelComplete:
+                        xor a
+                        ld (currentloop), a
+                        jp SwitchMainLoop
+
+RestartLife:
+                        ld ix, spritetable
+
+                        ld a, INITIAL_BALL_Y
+                        ld (ix+SPRITETABLE_Y), a
+                        ld a, INITIAL_BALL_X
+                        ld (ix+SPRITETABLE_X), a
+
+                        ld de, SPRITETABLE_SIZE
+                        add ix, de
+
+                        ld a, INITIAL_BAT_X
+                        ld (ix+SPRITETABLE_X), a
+
+                        xor a
+                        ld (yballdir), a
+                        ld (xballdir), a
+
+                        ld a, (lives)
+                        cp 0
+                        jr z, GameOver
+
+                        jr MainGameLoop
+
+; input - ix set to spritetable
+CheckLoseBall:
+                        ld a, (ix+SPRITETABLE_Y)
+                        cp 184                          ; Check if the ball is hitting the bottom
+                        ret nz
+
+                        ld hl, lives
+                        dec (hl)
+
+                        cp a                            ; set z to indicate a loss
+                        ret
+
+GameOver:
+                        xor a
+                        ld (currentloop), a
+                        jp SwitchMainLoop
+
+; LoadSprites - Load the sprite data into the sprite table. Always use index 0 for ball, index 1 for bat
+LoadSprites:
+                        ld ix, spritetable
+                        ld a, 1
+                        ld (ix+SPRITETABLE_FLAGS), a
+                        ld hl, INITIAL_BALL_COORDS
+                        ld (ix+SPRITETABLE_Y), hl
+                        ld (ix+SPRITETABLE_OLD_Y), hl
+                        ld hl, Ball_Data
+                        ld (ix+SPRITETABLE_DATA), hl
+
+                        ld de, SPRITETABLE_SIZE
+                        add ix, de
+
+                        ld a, 3
+                        ld (ix+SPRITETABLE_FLAGS), a
+                        ld hl, INITIAL_BAT_COORDS
+                        ld (ix+SPRITETABLE_Y), hl
+                        ld (ix+SPRITETABLE_OLD_Y), hl
+                        ld hl, Bat_Data
+                        ld (ix+SPRITETABLE_DATA), hl
+
+                        ret
+
+Ball_Hit:
+                        call Ball_HitY
+                        call Ball_HitX
+                        ret
+
+Ball_HitY:
+                        call Move_BallY
+                        call Move_BallY
+                        ret
+
+Ball_HitX:
+                        call Move_BallX
+                        call Move_BallX
+                        ret
+
+CheckBatCollision:
+                        ld hl, (ix+SPRITETABLE_Y)                 ; ball in hl
+
+                        ld a, l                         ; Check if ball is near bat
+                        cp 177                          ; this is when the bottom of the ball crosses the bat line
+
+                        ret c                           ; return if < 177, ball isn't near bat
+
+                        push ix
+                        ld de, SPRITETABLE_SIZE
+                        add ix, de
+
+                        ld bc, (ix+SPRITETABLE_Y)
+                        pop ix
+
+                        call CheckCollision8v16x8v8
+                        ret nz
+
+                        ld a, b
+                        add 14
+                        ld c, a
+
+                        ld a, b
+                        add 2
+                        ld b, a
+
+                        ld a, (ix+SPRITETABLE_X)
+                        add 4
+                        
+                        cp b
+                        jr c, GoLeft
+
+                        cp c
+                        jr nc, GoRight
+
+                        cp a
+
+                        call z, Switch_YDir
+                        jr z, Ball_HitY
+                        ret
+
+GoLeft:
+                        ld a, -1
+                        ld (xballdir), a
+
+                        call Switch_YDir
+                        jr Ball_HitY
+
+GoRight:
+                        ld a, 1
+                        ld (xballdir), a
+
+                        call Switch_YDir
+                        jr Ball_HitY
+
+; input: ix - set to spritetable
+CheckYEdgeCollision:
+                        ld a, (ix+SPRITETABLE_Y)
+
+                        cp 255                            ; Check if the ball is hitting the top
+                        call z, Switch_YDir
+                        jr z, Ball_HitY
+                        ret
+
+; input: ix - set to spritetable
+CheckXEdgeCollision:
+                        ld a, (ix+SPRITETABLE_X)
+
+                        cp 0
+                        jr z, Switch_XDir
+
+                        cp 247
+                        call z, Switch_XDir
+                        jr z, Ball_HitX
+                        ret
+
+Move_BallY:
+                        push ix
+
+                        ld ix, spritetable
+                        ld a, (ix+SPRITETABLE_Y)                  ; Get Y coord
+                        ld (ix+SPRITETABLE_OLD_Y), a
+
+                        ld bc, (yballdir)               ; Get ball direction
+                        add c                           ; move ball in that direction
+
+                        ld (ix+SPRITETABLE_Y), a                  ; set the new y coord
+
+                        pop ix
+                        ret
+
+Move_BallX:
+                        push ix
+                        ld ix, spritetable
+                        ld a, (ix+SPRITETABLE_X)
+                        ld (ix+SPRITETABLE_OLD_X), a
+
+                        ld bc, (xballdir)
+                        add c
+                        ld (ix+SPRITETABLE_X), a
+
+                        pop ix
+                        ret
+
+Switch_YDir:
+                        ld a, (yballdir)                ; Load balldir into a
+                        neg                             ; negate direction
+                        ld (yballdir), a                ; store new direction
+                        cp a                            ; set the z flag to indicate a switch occurred
+
+                        ret
+
+Switch_XDir:
+                        ld a, (xballdir)
+                        neg
+                        ld (xballdir), a
+                        cp a
+
+                        ret
+
+ReadKeys:       
+                        ld bc, Row_YUIOP
+                        in a, (c)
+
+                        rra                               ; check for P
+                        push af
+                        jr nc, Move_BatRight              ; move right
+
+                        pop af
+                        rra                               ; check for O
+                        jr nc, Move_BatLeft
+
+                        ld bc, Row_SpaceSymMNB
+                        in a, (c)
+
+                        and 1
+                        ret nz
+
+                        ld a, INITIAL_BALL_Y_DIR
+                        ld (yballdir), a
+                        ld a, INITIAL_BALL_X_DIR
+                        ld (xballdir), a
+
+Move_Done:
+                        ret
+
+Move_BatLeft:
+                        push ix
+                        ld ix, spritetable+SPRITETABLE_SIZE
+                        ld a, (ix+SPRITETABLE_X)
+
+                        cp 0
+                        jr z, Move_BatLeftDone
+
+                        ld (ix+SPRITETABLE_OLD_X), a
+                        sub 3
+
+                        ld (ix+SPRITETABLE_X), a
+
+                        ld a, (yballdir)
+                        cp 0
+
+                        call z, MoveBallToBat
+Move_BatLeftDone:
+                        pop ix
+                        ret
+
+Move_BatRight:
+                        push ix
+
+                        ld ix, spritetable+SPRITETABLE_SIZE
+                        ld a, (ix+SPRITETABLE_X)
+
+                        cp 240
+                        jr z, Move_BatRightDone
+
+                        ld (ix+SPRITETABLE_OLD_X), a
+                        add 3
+
+                        ld (ix+SPRITETABLE_X), a
+
+                        ld a, (yballdir)
+                        cp 0
+
+                        call z, MoveBallToBat
+
+Move_BatRightDone
+                        pop af
+                        pop ix
+                        jr Move_Done
+
+MoveBallToBat:
+                        push ix
+                        ld ix, spritetable
+
+                        ld a, (ix+SPRITETABLE_X+SPRITETABLE_SIZE)
+                        add 4
+
+                        ld (ix+SPRITETABLE_X), a
+
+                        pop ix
+
+                        ret

@@ -6,32 +6,36 @@ Bat_Data:               db 255, 255, 160, 5, 160, 5, 195,195, 196, 35, 169, 85, 
 ; Level store
 ; 16*rows*3
 RowColours:             db 8, 16, 24, 32, 48
-LevelMap:               BLOCK 240, 0                            ; (x, y, colour)
+LevelBlockCount:        db 0
+LevelMap:               block 240, 0                            ; (x, y, colour)
 
 ; variables
-ycoord:                 db INITIAL_BALL_Y                                  ; ball y
-xcoord:                 db INITIAL_BALL_X                                  ; ball x
-
-oldycoord:              db 0
-oldxcoord:              db 0
-
 yballdir:               db 0
 xballdir:               db 0
 
-tmpx:                   db 0
-
-baty:                   db INITIAL_BAT_Y
-batx:                   db INITIAL_BAT_X
-
-oldbaty:                db 0
-oldbatx:                db 0
+tmpx:                   db 0                                    ; Used by SpriteUtils to store x coord temporarily
 
 lives:                  db INITIAL_LIVES
 
+; sprite table, enough space for 10 sprites on screen
+; flags, x, y, old x, old y, data address = 7 bytes
+; Flags: bit 1 - active
+;        bit 2 - size (0 - 8x8, 1 - 16x8)
+SPRITETABLE_FLAGS       EQU 0
+SPRITETABLE_Y           EQU 1
+SPRITETABLE_X           EQU 2
+SPRITETABLE_OLD_Y       EQU 3
+SPRITETABLE_OLD_X       EQU 4
+SPRITETABLE_DATA        EQU 5
+SPRITETABLE_SIZE        EQU 7
+
+spritetable:            block SPRITETABLE_SIZE * MAX_SPRITES
+
 currentloop:            db 0
-mainloops:              dw StartScreenLoop, GameLoop
+mainloops:              dw StartScreenLoop, MainGameLoop
+initialisers:           dw StartScreenInitialise, GameLoopInitialise
 
 breakthru_string:       byte "BREAKTHRU\0"
-anykey_string:          byte "PRESS ANY KEY TO START\0"
+anykey_string:          byte "PRESS SPACE TO START\0"
 
                         include "anarchist-font.z80"

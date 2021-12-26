@@ -3,6 +3,9 @@ GenerateLevel
                         ld ix, LevelMap                                 ; index LevelMap
                         ld de, RowColours
 
+                        ld a, NUMBER_BRICKS_PER_ROW * NUMBER_ROWS
+                        ld (LevelBlockCount), a
+                        
                         ld b, NUMBER_ROWS                               ; 4 rows
                         ld l, ROW_START                                       ; initial y coord is 24
 GenerateNextRow
@@ -77,18 +80,18 @@ DisplayNextBrick:
 ; Inputs: hl - x, y of the ball
 ; Outputs: z - set to indicate collision
 CheckBrickCollision:
-                        ld ix, LevelMap                                 ; Index LevelMap
+                        ld iy, LevelMap                                 ; Index LevelMap
                         ld b, NUMBER_BRICKS                                        ; number of bricks
 
 CheckBrick:
-                        ld a, (ix + 2)                                  ; load brick colour to a
+                        ld a, (iy + 2)                                  ; load brick colour to a
                         cp 0                                            ; is it 0
                         jr z, CheckNextBrick                            ; skip missing brick
 
                         push bc                                         ; store the brick counter
                                                                         ; ld bc isn't working correctly (FIXME: Why?)
-                        ld c, (ix)                                      ; y in c
-                        ld b, (ix + 1)                                  ; x in b
+                        ld c, (iy)                                      ; y in c
+                        ld b, (iy + 1)                                  ; x in b
 
                         call CheckCollision8v16x8v8                     ; Check if the ball has entered the 8x8 
                         pop bc                                          ; restore the brick count
@@ -96,17 +99,23 @@ CheckBrick:
                         jr z, BrickCollision                            ; check the fine grained collisions
 CheckNextBrick:
                         ld de, 3                                        ; move to the next brick struct
-                        add ix, de
+                        add iy, de
 
                         djnz CheckBrick                                 ; check next brick
                         ret
-                        
-BrickCollision:
-                        ld l, (ix)                              ; collided brick x,y in hl
-                        ld h, (ix + 1)
 
+; inputs - iy set to the collision brick
+BrickCollision:
+                        push hl
+                        ld l, (iy)                              ; collided brick x,y in hl
+                        ld h, (iy + 1)
+
+                        push bc
                         call CheckFineGrainCollision            ; check fine grained collision
-                        jr CheckNextBrick                       ; check if we actually hit before removing brick
+                        pop bc
+                        pop hl
+                        
+                        jr nz, CheckNextBrick                       ; check if we actually hit before removing brick
 
                         call RemoveBrick                        ; remove the brick
 
@@ -121,7 +130,10 @@ CheckFineGrainCollision:
                         add 8
                         ld c, a                                 ; higher brick y in c
 
-                        ld a, (ycoord)                          ; ball y in a
+                        push ix
+                        ld ix, spritetable
+                        ld a, (ix+SPRITETABLE_Y)                          ; ball y in a
+                        pop ix
                         add 4                                   ; get centre of ball
 
                         call Between                            ; is centre of ball between the brick y?
@@ -141,7 +153,10 @@ CheckDirectionSwitch2:
                         add 15
                         ld c, a                                 ; higher brick x in c
 
-                        ld a, (xcoord)                          ; ball x in a
+                        push ix
+                        ld ix, spritetable
+                        ld a, (ix+SPRITETABLE_X)                          ; ball x in a
+                        pop ix
                         add 4                                   ; centre of the ball
 
                         call Between                            ; is between x bounds?
@@ -155,8 +170,11 @@ CheckDirectionSwitch2:
 
 CheckInnerBox:
                                                                 ; inner box is the 6x6 box inside the 8x8
-                        ld b, (xcoord)
-                        ld c, (ycoord)
+                        push ix
+                        ld ix, spritetable
+                        ld b, (ix+SPRITETABLE_X)
+                        ld c, (ix+SPRITETABLE_Y)
+                        pop ix
                         inc b                                   ; inset the hit box
                         inc c
 
@@ -178,8 +196,9 @@ CheckInnerBox:
 ;         ix - index to brick structure
 RemoveBrick
                         push hl                                 ; Store hl cos stuff trashes it
+                        ld hl, (iy)
                         xor a                                   ; zero a
-                        ld (ix+2), a                            ; set the colour of the brick to 0
+                        ld (iy+2), a                            ; set the colour of the brick to 0
                                                                 ; to indicate that it's missing
 
                         call pixelattradd                       ; get the attr address for the brick
@@ -194,4 +213,8 @@ RemoveBrick
                         call DrawBrickSprite                    ; Draw the brick over the old brick to remove it
                         pop ix
                         pop hl
+
+                        ld a, (LevelBlockCount)
+                        dec a
+                        ld (LevelBlockCount), a
                         ret

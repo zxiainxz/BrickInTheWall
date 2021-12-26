@@ -1,5 +1,5 @@
         DEVICE ZXSPECTRUM48                     ; sjasmplus directive for SAVESNA at end
-
+        SLDOPT COMMENT WPMEM, LOGPOINT, ASSERTION
 Stack_Top:              EQU 0xFFF0
 IM2_Table:              EQU 0xFE00
 IM2_Jmp:                EQU 0xFDFD
@@ -11,120 +11,70 @@ Code_Start:             EQU 0x7FFD
 
                         include "constants.z80"
                         include "data.z80"
-                        include "screenutils.z80"
-                        include "spriteutils.z80"
+                        include "fontutils.z80"
+                        include "game.z80"
                         include "levelutils.z80"
                         include "mathutils.z80"
                         include "random.z80"
+                        include "screenutils.z80"
+                        include "spriteutils.z80"
                         include "startscreen.z80"
-                        include "fontutils.z80"
 
 Main_Start:
-                        xor a                           ; clear a to 0 (black)
-                        out (#fe), a                    ; set border to 0
+; LOGPOINT Started
+                        xor a                                           ; clear a to 0 (black)
+                        out (#fe), a                                    ; set border to 0
+
+                        call InitialiseInterrupt                        ; Switch to interrupts
 
 SwitchMainLoop:
-                        ld h, 0
+                        ld h, 0                                         ; Put current loop index into hl
+                        ld a, (currentloop)
+                        ld l, a                                         
+                        add hl, hl                                      ; double it
+                        ld de, initialisers                             ; load the initialisers table
+                        add hl, de                                      ; point to the current loop initialiser
+                        ld a, (hl)                                      ; load the address in the table into hl
+                        inc hl
+                        ld h, (hl)
+                        ld l, a
+
+                        jp (hl)                                         ; jump to it
+
+InitialiseFinished:                                                     ; return label for initialisers
+                        ld h, 0                                         ; get the current loop index again
                         ld a, (currentloop)
                         ld l, a
                         add hl, hl
-                        ld de, mainloops
+
+                        ld de, mainloops                                ; this time load the mainloops table
                         add hl, de
                         ld a, (hl)
                         inc hl
                         ld h, (hl)
                         ld l, a
 
-                        jp (hl)
-                        ret
+                        jp (hl)                                         ; jump to the initialiser
 
-GameLoop:
-                        ld hl, lives
-                        ld (hl), INITIAL_LIVES
-
-                        call ClearScreen
-                        call GenerateLevel
-                        call DisplayLevel
-
-                        call DrawAllSprites
-
-                        call InitialiseInterrupt                        ; Switch to interrupts
-
-MainGameLoop:
-
-                        ld b, 1                                         ; number of halt instructions
-Wait_Timer:
-                        halt                                            ; Wait
-                        djnz Wait_Timer
-
-                        call Move_BallY
-                        call Move_BallX
-
-                        call ReadKeys
-
-                        call CheckBatCollision
-
-                        ld hl, (ycoord)
-                        call CheckBrickCollision
-
-                        call CheckYEdgeCollision
-
-                        call CheckXEdgeCollision
-
-                        call CheckLoseBall
-                        jr z, RestartLife
-
-                        jr MainGameLoop
-
-RestartLife:
-                        ld a, INITIAL_BAT_X
-                        ld (batx), a
-                        ld a, INITIAL_BALL_Y
-                        ld (ycoord), a
-                        ld a, INITIAL_BALL_X
-                        ld (xcoord), a
-                        xor a
-                        ld (yballdir), a
-                        ld (xballdir), a
-
-                        ld a, (lives)
-                        cp 0
-                        jr z, RestartLevel
-
-                        jr MainGameLoop
-
-CheckLoseBall:
-                        ld a, (ycoord)
-                        cp 184                          ; Check if the ball is hitting the bottom
-                        ret nz
-
-                        ld hl, lives
-                        dec (hl)
-
-                        cp a                            ; set z to indicate a loss
-                        ret
-
-RestartLevel:
-                        xor a
-                        ld (currentloop), a
-                        jr SwitchMainLoop
+                        ; execution now continues inside the mainloop
+                        ; when the mainloop has finished it updates currentloop and jumps to SwitchMainLoop
 
 InitialiseInterrupt:
-                        di
-                        ld hl, Interrupt
-                        ld ix, 0xfff0
-                        ld (ix+04h), 0xc3
-                        ld (ix+05h), l
+                        di                                              ; disable interrupts
+                        ld hl, Interrupt                                ; Load address of interrupt routine
+                        ld ix, 0xfff0                                   ; Setup the jr at fff4
+                        ld (ix+04h), 0xc3                               ; jp opcode
+                        ld (ix+05h), l                                  ; load address of interrupt routine
                         ld (ix+06h), h
-                        ld (ix+0fh), 0x18
-                        ld a, 0x39
-                        ld i, a
-                        im 2
-                        ei
+                        ld (ix+0fh), 0x18                               ; jr opcode at ffff
+                        ld a, 0x39                                      ; point the interrupt register at
+                        ld i, a                                         ; the 257 bytes of FFFF in the ZX 48 Rom
+                        im 2                                            ; switch to IM 2
+                        ei                                              ; Turn on interrupts again
 
 Interrupt:
-                        di
-                        push af
+                        di                                              ; Disable interrupts
+                        push af                                         ; Push everything to the stack
                         push bc
                         push de
                         push hl
@@ -140,11 +90,11 @@ Interrupt:
                         ld a, 5
                         out (#fe), a                                    ; red border
 
-                        call EraseAllSprites
+                        call EraseAllSprites                            ; Remove the old sprites
                         
-                        call DrawAllSprites
+                        call DrawAllSprites                             ; Draw the new sprites
 
-                        pop iy
+                        pop iy                                          ; pop it all back off the stack
                         pop hl
                         pop de
                         pop bc
@@ -156,197 +106,7 @@ Interrupt:
                         pop de
                         pop bc
                         pop af
-                        ei
-                        ret
-
-Ball_Hit:
-                        call Ball_HitY
-                        call Ball_HitX
-                        ret
-
-Ball_HitY:
-                        call Move_BallY
-                        call Move_BallY
-                        ret
-
-Ball_HitX:
-                        call Move_BallX
-                        call Move_BallX
-                        ret
-
-CheckBatCollision:
-                        ld hl, (ycoord)                 ; ball in hl
-
-                        ld a, l                         ; Check if ball is near bat
-                        cp 177                          ; this is when the bottom of the ball crosses the bat line
-
-                        ret c                           ; return if < 177, ball isn't near bat
-
-                        ld bc, (baty)
-
-                        call CheckCollision8v16x8v8
-                        ret nz
-
-                        ld a, b
-                        add 14
-                        ld c, a
-
-                        ld a, b
-                        add 2
-                        ld b, a
-
-                        ld a, (xcoord)
-                        add 4
-                        
-                        cp b
-                        jr c, GoLeft
-
-                        cp c
-                        jr nc, GoRight
-
-                        cp a
-
-                        call z, Switch_YDir
-                        jr z, Ball_HitY
-                        ret
-
-GoLeft:
-                        ld a, -1
-                        ld (xballdir), a
-
-                        call Switch_YDir
-                        jr Ball_HitY
-
-GoRight:
-                        ld a, 1
-                        ld (xballdir), a
-
-                        call Switch_YDir
-                        jr Ball_HitY
-
-CheckYEdgeCollision:
-                        ld a, (ycoord)
-
-                        cp 255                            ; Check if the ball is hitting the top
-                        call z, Switch_YDir
-                        jr z, Ball_HitY
-                        ret
-
-CheckXEdgeCollision:
-                        ld a, (xcoord)
-
-                        cp 0
-                        jr z, Switch_XDir
-
-                        cp 247
-                        call z, Switch_XDir
-                        jr z, Ball_HitX
-                        ret
-
-Move_BallY:
-                        ld a, (ycoord)                  ; Get Y coord
-                        ld (oldycoord), a
-
-                        ld bc, (yballdir)               ; Get ball direction
-                        add c                           ; move ball in that direction
-
-                        ld (ycoord), a                  ; set the new y coord
-                        ret
-
-Move_BallX:
-                        ld a, (xcoord)
-                        ld (oldxcoord), a
-
-                        ld bc, (xballdir)
-                        add c
-                        ld (xcoord), a
-
-                        ret
-
-Switch_YDir:
-                        ld a, (yballdir)                ; Load balldir into a
-                        neg                             ; negate direction
-                        ld (yballdir), a                ; store new direction
-                        cp a                            ; set the z flag to indicate a switch occurred
-
-                        ret
-
-Switch_XDir:
-                        ld a, (xballdir)
-                        neg
-                        ld (xballdir), a
-                        cp a
-
-                        ret
-
-ReadKeys:       
-                        ld bc, Row_YUIOP
-                        in a, (c)
-
-                        rra                               ; check for P
-                        push af
-                        jr nc, Move_BatRight              ; move right
-
-                        pop af
-                        rra                               ; check for O
-                        jr nc, Move_BatLeft
-
-                        ld bc, Row_SpaceSymMNB
-                        in a, (c)
-
-                        and 1
-                        ret nz
-
-                        ld a, INITIAL_BALL_Y_DIR
-                        ld (yballdir), a
-                        ld a, INITIAL_BALL_X_DIR
-                        ld (xballdir), a
-
-Move_Done:
-                        ret
-
-Move_BatLeft:
-                        ld a, (batx)
-
-                        cp 0
-                        jr z, Move_Done
-
-                        ld (oldbatx), a
-                        sub 3
-
-                        ld (batx), a
-
-                        ld a, (yballdir)
-                        cp 0
-
-                        call z, MoveBallToBat
-
-                        jr Move_Done
-
-Move_BatRight:
-                        ld a, (batx)
-
-                        cp 240
-                        jr z, Move_BatRightDone
-
-                        ld (oldbatx), a
-                        add 3
-
-                        ld (batx), a
-
-                        ld a, (yballdir)
-                        cp 0
-
-                        call z, MoveBallToBat
-
-Move_BatRightDone
-                        pop af
-                        jr Move_Done
-
-MoveBallToBat:
-                        ld a, (batx)
-                        add 4
-                        ld (xcoord), a
+                        ei                                              ; enable interrupts again
                         ret
 
 Code_Length:            EQU $-Code_Start + 1

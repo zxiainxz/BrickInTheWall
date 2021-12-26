@@ -1,6 +1,6 @@
-StartScreenLoop:
+StartScreenInitialise:
                         call ClearScreen
-                        
+
                         ld a, 1
                         out (#fe), a
 
@@ -9,21 +9,19 @@ StartScreenLoop:
                         ld bc, breakthru_string
                         call DisplayString
 
-                        ld hl, 0x285c                           ; 40, 92
+                        ld hl, 0x305c                           ; 40, 92
                         ld bc, anykey_string
                         call DisplayString
+                        jp InitialiseFinished
 
-WaitForStartKey:
-                        ei
-                        ld hl, 23560
-                        ld (hl), 0
+StartScreenLoop:
+                        ld bc, Row_SpaceSymMNB                  ; Check for Space
+                        in a, (c)
 
-WaitForKeyLoop:
-                        ld a, (hl)
-                        cp 0
-                        jr z, WaitForKeyLoop
+                        and 1
+                        jr nz, StartScreenLoop                  ; Wait for space
 
                         ld a, 1
-                        ld (currentloop), a
+                        ld (currentloop), a                     ; Move to the game loop
 
                         jr SwitchMainLoop

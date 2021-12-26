@@ -3,6 +3,7 @@
 ;         de - screen address
 ;         hl - x, y
 DrawSprite8x8:
+                        push bc
 
                         ld a, l                         ; load y in a
                         ld b, 8                         ; Size of sprite
@@ -52,6 +53,7 @@ LineDrawn:
 
                         djnz DrawRow
 
+                        pop bc
                         ret
 
 ShiftLeft:
@@ -251,29 +253,107 @@ DrawBatSprite:
                         ret
 
 DrawAllSprites:
-                        ld hl, (ycoord)
+                        ld ix, spritetable
+                        ld b, MAX_SPRITES
+
+ProcessNextSprite:
+                        ld c, (ix+SPRITETABLE_FLAGS)
+                        ld a, c
+                        and 1
+                        cp 0
+                        jr z, NextSprite
+
+                        ld a, c                                         ; Restore flags
+
+                        ld hl, (ix+SPRITETABLE_Y)
+
+                        push ix
+
+                        ld de, (ix+SPRITETABLE_DATA)
+                        ld ix, de
+
                         call scadd
-                        call DrawBallSprite             ; Draw sprite
+                        and %00000010
 
-                        ld hl, (ycoord)
-                        ld (oldycoord), hl
+                        push hl
 
-                        ld hl, (baty)
-                        call scadd
-                        call DrawBatSprite
+                        cp 0
+                        jr z, Sprite8x8
+                        call DrawSprite16x8
+                        jr SpriteDrawn
+Sprite8x8:
+                        call DrawSprite8x8
 
-                        ld hl, (baty)
-                        ld (oldbaty), hl
+SpriteDrawn:
+                        pop hl
+                        pop ix
+                        ld (ix+SPRITETABLE_OLD_Y), hl
+                        
+NextSprite:
+                        ld de, SPRITETABLE_SIZE
+                        add ix, de
+                        djnz ProcessNextSprite
 
                         ret
 
+; This code is 99% identical to DrawAllSprites, except for where it takes
+; the coords from. It could be shared by using some self modifying code
+; but I don't know how that would work with the interrupts
 EraseAllSprites:
-                        ld hl, (oldycoord)
-                        call scadd
-                        call DrawBallSprite             ; Erase sprite
+                        ld ix, spritetable
+                        ld b, MAX_SPRITES
 
-                        ld hl, (oldbaty)
-                        call scadd
-                        call DrawBatSprite
+ProcessEraseNextSprite:
+                        ld c, (ix+SPRITETABLE_FLAGS)
+                        ld a, c
+                        and 1
+                        cp 0
+                        jr z, EraseNextSprite
 
+                        ld a, c                                         ; Restore flags
+
+                        ld hl, (ix+SPRITETABLE_OLD_Y)
+
+                        push ix
+
+                        ld de, (ix+SPRITETABLE_DATA)
+                        ld ix, de
+
+                        call scadd
+                        and %00000010
+
+                        push hl
+
+                        cp 0
+                        jr z, EraseSprite8x8
+                        call DrawSprite16x8
+                        jr SpriteErased
+EraseSprite8x8:
+                        call DrawSprite8x8
+
+SpriteErased:
+                        pop hl
+                        pop ix
+                        ; ld (ix+SPRITETABLE_OLD_Y), hl
+                        
+EraseNextSprite:
+                        ld de, SPRITETABLE_SIZE
+                        add ix, de
+                        djnz ProcessEraseNextSprite
+
+                        ret
+
+
+InitialliseSpriteTable:
+                        ld b, MAX_SPRITES
+                        ld ix, spritetable
+InitNextSprite:
+                        xor a
+
+                        ld (ix+SPRITETABLE_FLAGS), a
+
+                        ld de, SPRITETABLE_SIZE
+                        add ix, de
+
+                        djnz InitNextSprite
                         ret
