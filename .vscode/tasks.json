@@ -10,6 +10,7 @@
             "args": [
 				"--lst=${fileDirname}/${fileBasenameNoExtension}.lst",
                 "--sld=${fileDirname}/${fileBasenameNoExtension}.sld",
+                "--raw=${fileDirname}/${fileBasenameNoExtension}.raw",
             	//"${file}"                                   
                 "main.z80"
 			],

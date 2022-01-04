@@ -1,10 +1,11 @@
 StartScreenInitialise:
                         call ClearScreen
+                        call InitialliseSpriteTable             ; Clear anything stored in the Sprite table by other scenes
 
                         ld a, 1
                         out (#fe), a
 
-                        ld hl, 0x5c3c                           ; 92, 60
+                        ld hl, 0x3c3c                           ; 60, 60
 
                         ld bc, breakthru_string
                         call DisplayString
@@ -12,16 +13,17 @@ StartScreenInitialise:
                         ld hl, 0x305c                           ; 40, 92
                         ld bc, anykey_string
                         call DisplayString
+
                         jp InitialiseFinished
 
 StartScreenLoop:
                         ld bc, Row_SpaceSymMNB                  ; Check for Space
-                        in a, (c)
+                         in a, (c)
 
                         and 1
                         jr nz, StartScreenLoop                  ; Wait for space
 
-                        ld a, 1
+                        ld a, INTRO_SCENE
                         ld (currentloop), a                     ; Move to the game loop
 
                         jr SwitchMainLoop

@@ -1,114 +1,633 @@
-; GenerateLevel - Generate a basic 16x4 level
-GenerateLevel
-                        ld ix, LevelMap                                 ; index LevelMap
-                        ld de, RowColours
+; Points ix to the current level
+LoadCurrentLevel:
+                        push hl                                 ; store hl
 
-                        ld a, NUMBER_BRICKS_PER_ROW * NUMBER_ROWS
-                        ld (LevelBlockCount), a
-                        
-                        ld b, NUMBER_ROWS                               ; 4 rows
-                        ld l, ROW_START                                       ; initial y coord is 24
-GenerateNextRow
-                        ld a, NUMBER_BRICKS_PER_ROW                            ; 16 bricks per row
-                        ld h, 0                                         ; initial x coord is 0
-
-GenerateNextBlock
-                        ld (ix), hl                                     ; store x,y for this brick
-
-                        ex af, af'                                      ; switch to shadow a' to save the counter
-
-                        push hl
-                        push de
-                        pop hl
-
-                        ld a, (hl)
-                        ld (ix+2), a                                    ; store the brick colour (0 for no brick)
-                        pop hl
-
-                        ld a, h                                         ; add 16 to h
-                        add 16
-                        ld h, a
-                        ex af, af'                                      ; switch back to brick count in a
-
-                        dec a                                           ; decrease numbers bricks left in the row
-
-                        push de
-                        ld de, 3                                        
-                        add ix, de                                      ; move to next brick struct
-                        pop de
-
-                        cp 0                                            ; check if a is 0
-                        jr z, MoveToNextRow                             ; go to next row if it is
-                        jr GenerateNextBlock                            ; otherwise next brick
-
-MoveToNextRow
-                        ld a, l                                         ; add 8 pixels to the row
-                        add 8
+                        ld h, 0                                 ; load the current level into hl
+                        ld a, (currentlevel)
                         ld l, a
-                        inc e
-                        djnz GenerateNextRow                            ; make next row if there is one
+                        add hl, hl                              ; double it because we're accessing memory offsets
+
+                        ld de, levels                           ; load the levels table
+                        add hl, de                              ; point hl to the current level
+
+                        ld a, (hl)                              ; get the address of the level in hl
+                        inc hl
+                        ld h, (hl)
+                        ld l, a
+
+                        ld ix, hl                               ; copy hl to ix
+
+                        pop hl                                  ; restore
+                        ret
+
+; Inputs: hl: pixel coords (including offset)
+; Outputs: hl: address of corresponding brick in level map
+Pixel2LevelMap:
+                        ld a, l
+                        sub 32
+                        ld l, a
+                        ; fall thru to PixelNoOffset2LevelMap
+PixelNoOffset2LevelMap:
+                        ld de, LevelMap
+
+                        srl h
+                        srl h
+                        srl h
+                        srl h
+
+                        ld a, l                             
+                        add a
+                        add h
+
+                        ld h, 0
+                        ld l, a
+
+                        add hl, de
+                        ret
+
+; inputs b - brick x, c - brick y
+; outputs: h - pixel x, l - pixel y
+Brick2Pixel:
+                        ld a, b
+                        add a, a
+                        add a, a
+                        add a, a
+                        add a, a
+
+                        ld h, a
+
+                        ld a, c
+                        add a, a
+                        add a, a
+                        add a, a
+
+                        add 32                          ; y offset
+
+                        ld l, a
+                        ret
+
+; Does not take offset into account
+Pixel2Brick:
+                        srl h
+                        srl h
+                        srl h
+                        srl h
+
+                        srl l
+                        srl l
+                        srl l
+                        ret
+
+Brick2LevelMap:
+                        ld de, LevelMap
+
+                        ld a, l
+                        add a, a
+                        add a, a
+                        add a, a
+                        add a, a
+
+                        add h
+
+                        ld h, 0
+                        ld l, a
+
+                        add hl, de
+                        ret
+
+; Resets all the bricks in the level to on
+ResetLevel:
+                        push hl
+                        ld hl, LevelMap                         ; point hl to the brick map
+                        xor a                                 
+                        ld b, 256                               ; 256 bytes for map (could use bits if short on mem)
+ResetNextBrick                        
+                        ld (hl), a                              ; mark brick inactive
+                        inc hl                                  ; next brick
+                        djnz ResetNextBrick
+                        pop hl
                         ret
 
 ; DispalyLevel - Displays the level stored in LevelMap
 DisplayLevel:
-                        ld ix, LevelMap                                 ; index LevelMap
-                        ld b, NUMBER_BRICKS                                        ; brick count
+                        call LoadCurrentLevel
+                        ld b, (ix)                                       ; brick count
+                        ld a, b
+                        ld (LevelBlockCount), a
+                        ld c, 0
+                        inc ix                                          ; Put ix after the level name
+                        inc ix
+                        inc ix
 
 DisplayNextBrick:
-                        ld l, (ix)                                      ; y in l
-                        ld h, (ix + 1)                                  ; x in h
-                        call scadd                                      ; calculate screen addr for h,l
-                                                                        ; de contains screen address
-                        push ix                                         ; store ix, hl
-                        push hl                                         ; should move to DrawBrickSprite
-                        call DrawBrickSprite                            ; Draw the brick
+                        ld a, (ix)                                      ; check if ix is a colour command           
+                        cp 255
+                        jp z, SetBrickColour
+
+                        ld hl, (ix)
+                        ld a, l
+                        add 32
+                        ld l, a
+                        call scadd
+
+                        push ix
+                        push hl
+                        call DrawBrickSprite
                         pop hl
                         pop ix
 
-                        call pixelattradd                               ; get attr address for h,l in de
-                        ld a, (ix+2)                                    ; brick colour in a        
-                        ld (de), a                                      ; put the colour in two attrs
-                        inc de                                          
+                        call pixelattradd
+                        ld a, c                                         ; put the colour into the attrs
+                        ld (de), a
+                        inc de
                         ld (de), a
 
-                        ld de, 3                                        ; next brick struct
-                        add ix, de
-                        djnz DisplayNextBrick                           ; display next brick if it exists
+                        push hl
+
+                        call Pixel2LevelMap
+
+                        ld a, 1
+                        ld (hl), a
+
+                        pop hl
+
+                        inc ix
+                        inc ix
+
+                        djnz DisplayNextBrick
+
+                        call GenerateOutline
+                        call DrawOutline
+                        ret
+
+SetBrickColour:
+                        ld a, (ix + 1)
+                        or 7
+                        ld c, a
+                        inc ix
+                        inc ix
+                        jr DisplayNextBrick                             ; Don't count colour instructions
+                                                                        ; towards the number of blocks so skip djnz
+
+; 76543210
+; 000ablrc
+GenerateOutline:
+                        ld hl, LevelMap
+                        call GOProcessFirstRow
+
+                        ld b, 14
+GOPR:                   call GOProcessRow
+                        djnz GOPR
+
+                        call GOProcessLastRow
+                        ret
+
+GOProcessFirstRow:
+                        ld a, (hl)
+                        cp 0
+                        jr z, GOPFRCheckMiddle
+
+                        ; process first brick
+
+                        or 4
+                        ld (hl), a
+                        push hl
+                        call GOProcessRightBrick
+                        pop hl
+
+                        push hl
+                        call GOProcessBelowBrick
+                        pop hl
+
+GOPFRCheckMiddle:
+                        inc hl
+                        ld b, 14
+
+GOPFirstRowMiddle:
+                        ld a, (hl)
+                        cp 0
+                        jr z, GOPFRMiddleNext
+
+                        ld (hl), a
+
+                        push hl
+                        call GOProcessLeftBrick
+                        pop hl
+
+                        push hl
+                        call GOProcessRightBrick
+                        pop hl
+
+                        push hl
+                        call GOProcessBelowBrick
+                        pop hl
+
+GOPFRMiddleNext:
+                        inc hl
+                        djnz GOPFirstRowMiddle
+
+                        ld a, (hl)
+                        cp 0
+                        jr z, GOFRDone
+
+                        or 2
+                        ld (hl), a
+
+                        ; process last brick
+                        push hl
+                        call GOProcessLeftBrick
+                        pop hl
+
+                        push hl
+                        call GOProcessBelowBrick
+                        pop hl
+
+GOFRDone:
+                        inc hl
+
+                        ret
+
+GOProcessRow:
+                        ld a, (hl)
+                        cp 0
+                        jr z, GOPRCheckMiddle
+
+                        or 4
+                        ld (hl), a
+
+                        push hl
+                        call GOProcessRightBrick
+                        pop hl
+
+                        push hl
+                        call GOProcessAboveBrick
+                        pop hl
+
+                        push hl
+                        call GOProcessBelowBrick
+                        pop hl
+
+GOPRCheckMiddle:
+                        inc hl
+
+                        push bc
+
+                        ld b, 14
+
+GOPRowMiddle:
+                        ld a, (hl)
+                        cp 0
+                        jr z, GOPRNext
+
+                        push hl
+                        call GOProcessLeftBrick
+                        pop hl
+
+                        push hl
+                        call GOProcessRightBrick
+                        pop hl
+
+                        push hl
+                        call GOProcessAboveBrick
+                        pop hl
+
+                        push hl
+                        call GOProcessBelowBrick
+                        pop hl
+GOPRNext:
+                        inc hl
+                        djnz GOPRowMiddle
+
+                        pop bc
+
+                        ld a, (hl)
+                        cp 0
+                        jr z, GOPRDone
+
+                        or 2
+                        ld (hl), a
+
+                        ; process last brick
+                        push hl
+                        call GOProcessLeftBrick
+                        pop hl
+
+                        push hl
+                        call GOProcessAboveBrick
+                        pop hl
+
+                        push hl
+                        call GOProcessBelowBrick
+                        pop hl
+GOPRDone:
+                        inc hl
+                        ret
+
+GOProcessLastRow:
+                        ld a, (hl)
+                        cp 0
+                        jr z, GOPLRMiddle
+
+                        or 4
+                        ld (hl), a
+
+                        push hl
+                        call GOProcessRightBrick
+                        pop hl
+
+                        push hl
+                        call GOProcessAboveBrick
+                        pop hl
+GOPLRMiddle:
+                        inc hl
+
+                        ld b, 14
+
+GOPLastRowMiddle:
+                        ld a, (hl)
+                        cp 0
+                        jr z, GOPLRNext
+
+                        ld (hl), a
+
+                        push hl
+                        call GOProcessLeftBrick
+                        pop hl
+
+                        push hl
+                        call GOProcessRightBrick
+                        pop hl
+
+                        push hl
+                        call GOProcessAboveBrick
+                        pop hl
+
+GOPLRNext:
+                        inc hl
+                        djnz GOPLastRowMiddle
+
+                        ld a, (hl)
+                        cp 0
+                        ret z
+
+                        or 2
+                        ld (hl), a
+
+                        ; process last brick
+                        push hl
+                        call GOProcessLeftBrick
+                        pop hl
+
+                        push hl
+                        call GOProcessAboveBrick
+                        pop hl
+
+                        ret
+
+; There must be some self-modifying code that could set the bit number this code doesn't need duplicated
+GOProcessLeftBrick:
+                        dec hl
+                        ld a, (hl)
+                        cp 0
+                        ret z
+                        set 1, a
+                        ld (hl), a
+                        ret
+
+GOProcessRightBrick:
+                        inc hl
+                        ld a, (hl)
+                        cp 0
+                        ret z
+                        set 2, a
+                        ld (hl), a
+                        ret
+
+GOProcessAboveBrick:
+                        ld de, 16
+                        sbc hl, de
+
+                        ld a, (hl)
+                        cp 0
+                        ret z
+                        set 3, a
+                        ld (hl), a
+                        ret
+
+GOProcessBelowBrick:
+                        ld de, 16
+                        add hl, de
+                        ld a, (hl)
+                        cp 0
+                        ret z
+                        set 4, a
+                        ld (hl), a
+                        ret
+
+DrawOutline:
+                        ld c, 0
+                        ld hl, LevelMap
+
+DODrawRow:
+                        ld b, 0
+
+DODrawNextBrick:
+                        ld a, (hl)
+                        cp 0
+                        jr z, DOMoveToNextBrick
+
+                        call DrawBrickOutline
+
+DOMoveToNextBrick:
+                        inc hl
+
+                        inc b
+                        ld a, b
+                        cp 16
+                        jr nz, DODrawNextBrick
+
+                        inc c
+                        ld a, c
+                        cp 16
+                        jr nz, DODrawRow
+
+                        ret
+
+DrawBrickOutline:
+
+                        bit 1, a
+                        call z, DODrawRightEdge
+
+                        bit 2, a
+                        call z, DODrawLeftEdge
+
+                        bit 3, a
+                        call z, DODrawBottomEdge
+
+                        bit 4, a
+                        call z, DODrawTopEdge
+
+                        ret
+
+DODrawRightEdge:
+                        push hl
+
+                        inc b
+                        call Brick2Pixel
+                        dec b
+
+                        call scadd
+
+                        push bc
+
+                        ld a, 128
+                        call DrawVerticalLine
+
+                        pop bc
+                        pop hl
+                        ret
+
+DODrawLeftEdge:
+                        push hl
+
+                        call Brick2Pixel
+                        dec h
+
+                        call scadd
+
+                        push bc
+                        
+                        ld a, 1
+                        call DrawVerticalLine
+
+                        pop bc
+                        pop hl
+
+                        ret
+
+DrawVerticalLine:
+                        ld b, 8
+
+                        ex af, af'
+                        ld a, l
+                        ex af, af'
+DrawNextVertical:       
+                        push bc
+                        ld c, a
+                        ld a, (de)
+                        or c                 
+                        ld (de), a
+                        pop bc
+                        
+                        ex af, af'
+                        call nextrow
+                        ex af, af'
+
+                        djnz DrawNextVertical
+                        ret
+
+DODrawBottomEdge:
+                        push hl
+
+                        inc c
+                        call Brick2Pixel
+                        dec c
+
+                        call scadd
+
+                        ld a, 255
+                        ld (de), a
+                        inc de
+                        ld (de), a
+
+                        pop hl
+                        ret
+
+DODrawTopEdge:
+                        push hl
+
+                        call Brick2Pixel
+
+                        dec l
+
+                        call scadd
+
+                        ld a, 255
+                        ld (de), a
+                        inc de
+                        ld (de), a
+
+                        pop hl
                         ret
 
 ; CheckBrickCollision - Check if the ball has collided with any of the bricks
 ; Inputs: hl - x, y of the ball
 ; Outputs: z - set to indicate collision
 CheckBrickCollision:
-                        ld iy, LevelMap                                 ; Index LevelMap
-                        ld b, NUMBER_BRICKS                                        ; number of bricks
+                        push ix                                         ; store ix because LoadCurrentLevel will destroy
+                        call LoadCurrentLevel
+                        push ix                                         ; copy ix to iy
+                        pop iy
+                        pop ix                                          ; restore original ix
+
+                        ld a, l
+                        cp 23                                           ; y-offset
+                        ret c
+
+                        cp 168                                          ; bottom of possible bricks
+                        ret nc
+
+                        ld b, (iy)                                      ; number of bricks
+                        inc iy                                          ; start of block data
+                        inc iy
+                        inc iy
 
 CheckBrick:
-                        ld a, (iy + 2)                                  ; load brick colour to a
-                        cp 0                                            ; is it 0
-                        jr z, CheckNextBrick                            ; skip missing brick
+                        ld a, (iy)                                      ;
+                        cp 255                                          ; is it a colour instruction?
+                        jr z, SkipColour                                ; skip colour instruction
 
-                        push bc                                         ; store the brick counter
-                                                                        ; ld bc isn't working correctly (FIXME: Why?)
-                        ld c, (iy)                                      ; y in c
-                        ld b, (iy + 1)                                  ; x in b
+                        ; push bc                                         ; store the brick counter
+                        ; ld bc, (iy)
+                        ; push hl
 
+                        ; push bc
+                        ; pop hl
+                        push hl
+                        ld hl, (iy)
+                        call PixelNoOffset2LevelMap
+                        ld a, (hl)
+                        and 1
+
+                        pop hl
+
+                        jr z, CheckNextBrick
+
+                        push bc
+                        ld bc, (iy)
+                        ld a, c
+                        add 32
+                        ld c, a
                         call CheckCollision8v16x8v8                     ; Check if the ball has entered the 8x8 
                         pop bc                                          ; restore the brick count
 
                         jr z, BrickCollision                            ; check the fine grained collisions
 CheckNextBrick:
-                        ld de, 3                                        ; move to the next brick struct
-                        add iy, de
+                        inc iy                                          ; move to the next brick struct
+                        inc iy
 
                         djnz CheckBrick                                 ; check next brick
                         ret
 
+SkipColour:
+                        inc iy
+                        inc iy
+                        jr CheckBrick
+
 ; inputs - iy set to the collision brick
 BrickCollision:
                         push hl
-                        ld l, (iy)                              ; collided brick x,y in hl
-                        ld h, (iy + 1)
+                        ld hl, (iy)
 
                         push bc
                         call CheckFineGrainCollision            ; check fine grained collision
@@ -132,7 +651,7 @@ CheckFineGrainCollision:
 
                         push ix
                         ld ix, spritetable
-                        ld a, (ix+SPRITETABLE_Y)                          ; ball y in a
+                        ld a, (ix+SPRITETABLE_Y)                ; ball y in a
                         pop ix
                         add 4                                   ; get centre of ball
 
@@ -196,12 +715,25 @@ CheckInnerBox:
 ;         ix - index to brick structure
 RemoveBrick
                         push hl                                 ; Store hl cos stuff trashes it
+
+                        ; FIXME: At some point before calling remove brick
+                        ; hl has the ball coords
                         ld hl, (iy)
-                        xor a                                   ; zero a
-                        ld (iy+2), a                            ; set the colour of the brick to 0
-                                                                ; to indicate that it's missing
+
+                        push hl
+
+                        call PixelNoOffset2LevelMap
+                        xor a
+                        ld (hl), a
+
+                        pop hl
+
+                        ld a, l
+                        add 32
+                        ld l, a
 
                         call pixelattradd                       ; get the attr address for the brick
+
                         ld a, 56                                ; 56 is white paper
                         ld (de), a                              ; put it into the two adjacent character spaces
                         inc e
@@ -210,11 +742,134 @@ RemoveBrick
                         call scadd                              ; get the screen address for the pixel
 
                         push ix
+                        push hl
                         call DrawBrickSprite                    ; Draw the brick over the old brick to remove it
+                        pop hl
+                        call UpdateOutline
                         pop ix
                         pop hl
+
+                        call AddBrickScore
+
+                        ld a, (bonusadder)                      ; increase the score bonus for every brick hit
+                        inc a
+                        ld (bonusadder), a
 
                         ld a, (LevelBlockCount)
                         dec a
                         ld (LevelBlockCount), a
+                        ret
+
+; Update the outline for the block at pixel h,l
+UpdateOutline:
+                        push bc
+
+                        push hl
+                        ld a, l
+                        sub 32
+                        ld l, a
+                        call Pixel2Brick
+
+                        push hl
+                        pop bc
+
+                        ld a, h
+                        cp 0
+
+                        push hl
+                        call nz, RemoveProcessLeftBrick
+                        pop hl
+
+                        cp 15
+
+                        push hl
+                        call nz, RemoveProcessRightBrick
+                        pop hl
+
+                        ld a, l
+                        cp 0
+                        
+                        push hl
+                        call nz, RemoveProcessAboveBrick
+                        pop hl
+
+                        cp 15
+
+                        push hl
+                        call nz, RemoveProcessBelowBrick
+                        pop hl
+
+                        pop hl
+                        pop bc
+                        ret
+
+RemoveProcessLeftBrick:
+                        call Brick2LevelMap
+
+                        dec hl
+                        ld a, (hl)
+                        cp 0
+                        ret z
+                        res 1, a
+                        ld (hl), a
+
+                        dec b
+
+                        call DrawBrickOutline
+
+                        inc b
+                        ret
+
+RemoveProcessRightBrick:
+                        call Brick2LevelMap
+
+                        inc hl
+                        ld a, (hl)
+                        cp 0
+                        ret z
+                        res 2, a
+                        ld (hl), a
+
+                        inc b
+
+                        call DrawBrickOutline
+
+                        dec b
+                        ret
+
+RemoveProcessAboveBrick:
+                        call Brick2LevelMap
+
+                        ld de, 16
+                        sbc hl, de
+
+                        ld a, (hl)
+                        cp 0
+                        ret z
+                        res 3, a
+                        ld (hl), a
+
+                        dec c
+
+                        call DrawBrickOutline
+
+                        inc c
+                        ret
+
+RemoveProcessBelowBrick:
+                        call Brick2LevelMap
+
+                        ld de, 16
+                        add hl, de
+                        ld a, (hl)
+                        cp 0
+                        ret z
+                        res 4, a
+                        ld (hl), a
+
+                        inc c
+
+                        call DrawBrickOutline
+
+                        dec c
                         ret

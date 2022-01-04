@@ -1,0 +1,21 @@
+LevelCompleteInitialise:
+                        call InitialliseSpriteTable             ; Clear anything stored in the Sprite table by other scenes
+                        call ClearAttrs
+                        call FadeScreenToWhite
+
+                        ld bc, level_complete_string
+
+                        call CentreString
+                        ld l, 64
+                        call DisplayString
+
+                        jp InitialiseFinished
+
+LevelCompleteLoop:
+                        ld b, 200
+LCWaitLoop:             halt
+                        djnz LCWaitLoop
+
+                        ld a, INTRO_SCENE
+                        ld (currentloop), a
+                        jp SwitchMainLoop

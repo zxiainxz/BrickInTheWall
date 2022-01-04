@@ -1,17 +1,26 @@
 GameLoopInitialise:
                         ld hl, lives
-                        ld (hl), INITIAL_LIVES
+                        ld (hl), INITIAL_LIVES                          ; set initial lives
 
-                        call ClearScreen
-                        call GenerateLevel
-                        call DisplayLevel
+                        call StartLevel
 
-                        call LoadSprites
-                        call DrawAllSprites
+                        ld bc, score_string
+                        ld hl, 0x0000
+                        call DisplayString
+                        call DrawScore
+
+                        ld bc, lives_string
+                        ld hl, 0xA300
+                        call DisplayString
+                        call DrawLives
+
+                        call LoadSprites                                ; Put the sprites this scene uses into the
+                                                                        ; sprite table
+                        call DrawAllSprites                             ; Draw the sprites once so the interrupt
+                                                                        ; has something to erase
                         jp InitialiseFinished
 
 MainGameLoop:
-
                         ld b, 1                                         ; number of halt instructions
 Wait_Timer:
                         halt                                            ; Wait
@@ -23,27 +32,20 @@ Wait_Timer:
                         call ReadKeys
 
                         ld ix, spritetable
-                        push ix
+
                         call CheckBatCollision
-                        pop ix
 
-                        ld hl, (ix+SPRITETABLE_Y)
+                        ld hl, (ix+SPRITETABLE_Y)                       ; the ball is the first entry in the sprite
+                                                                        ; table
 
-                        push ix
                         call CheckBrickCollision
-                        pop ix
 
                         ld a, (LevelBlockCount)
                         cp 0
                         jr z, LevelComplete
 
-                        push ix
                         call CheckYEdgeCollision
-                        pop ix
-
-                        push ix
                         call CheckXEdgeCollision
-                        pop ix
 
                         call CheckLoseBall
                         jr z, RestartLife
@@ -51,11 +53,26 @@ Wait_Timer:
                         jr MainGameLoop
 
 LevelComplete:
-                        xor a
+
+                        ld a, (currentlevel)
+                        inc a
+                        ld (currentlevel), a
+
+                        ld a, LEVELCOMPLETE_SCENE
                         ld (currentloop), a
                         jp SwitchMainLoop
+                        
+StartLevel:
+                        xor a                                           ; Stationary ball to start
+                        ld (yballdir), a
+                        ld (xballdir), a
 
-RestartLife:
+                        call FadeScreenToWhite
+                        call ResetLevel
+                        call DisplayLevel
+                        ret
+
+ResetBallBat:
                         ld ix, spritetable
 
                         ld a, INITIAL_BALL_Y
@@ -72,12 +89,36 @@ RestartLife:
                         xor a
                         ld (yballdir), a
                         ld (xballdir), a
+                        ret
 
+RestartLife:
+                        call ResetBallBat
                         ld a, (lives)
                         cp 0
                         jr z, GameOver
 
                         jr MainGameLoop
+
+DrawLives:
+                        ld a, (lives)
+                        cp 0
+                        ret z
+
+                        ld b, a
+                        ld hl, 0xCD00
+DrawLife:               
+                        push hl         
+                        call scadd
+                        call DrawBatSprite
+                        pop hl
+
+                        ld d, 17
+                        ld e, 0
+                        add hl, de
+
+                        djnz DrawLife
+
+                        ret
 
 ; input - ix set to spritetable
 CheckLoseBall:
@@ -85,14 +126,20 @@ CheckLoseBall:
                         cp 184                          ; Check if the ball is hitting the bottom
                         ret nz
 
+                        call DrawLives
+
                         ld hl, lives
                         dec (hl)
 
+                        xor a
+                        ld (bonusadder), a              ; Remove any bonus accrued
+
+                        call DrawLives
                         cp a                            ; set z to indicate a loss
                         ret
 
 GameOver:
-                        xor a
+                        ld a, GAMEOVER_SCENE
                         ld (currentloop), a
                         jp SwitchMainLoop
 
@@ -120,11 +167,6 @@ LoadSprites:
 
                         ret
 
-Ball_Hit:
-                        call Ball_HitY
-                        call Ball_HitX
-                        ret
-
 Ball_HitY:
                         call Move_BallY
                         call Move_BallY
@@ -136,6 +178,10 @@ Ball_HitX:
                         ret
 
 CheckBatCollision:
+                        ld a, (yballdir)
+                        cp 1
+                        ret nz 
+
                         ld hl, (ix+SPRITETABLE_Y)                 ; ball in hl
 
                         ld a, l                         ; Check if ball is near bat
@@ -152,6 +198,9 @@ CheckBatCollision:
 
                         call CheckCollision8v16x8v8
                         ret nz
+
+                        xor a
+                        ld (bonusadder), a              ; Reset the score bonus when we hit the bat
 
                         ld a, b
                         add 14
@@ -194,7 +243,7 @@ GoRight:
 CheckYEdgeCollision:
                         ld a, (ix+SPRITETABLE_Y)
 
-                        cp 255                            ; Check if the ball is hitting the top
+                        cp 8                            ; Check if the ball is hitting the top
                         call z, Switch_YDir
                         jr z, Ball_HitY
                         ret
@@ -260,14 +309,18 @@ ReadKeys:
                         in a, (c)
 
                         rra                               ; check for P
-                        push af
                         jr nc, Move_BatRight              ; move right
 
-                        pop af
                         rra                               ; check for O
                         jr nc, Move_BatLeft
 
-                        ld bc, Row_SpaceSymMNB
+                        ld bc, Row_VCXZShift                                ; Check for c, complete level
+                        in a, (c)
+
+                        and 8
+                        jr z, CompleteLevel
+
+                        ld bc, Row_SpaceSymMNB                              ; check for <space>, launch ball
                         in a, (c)
 
                         and 1
@@ -281,6 +334,10 @@ ReadKeys:
 Move_Done:
                         ret
 
+CompleteLevel:
+                        xor a
+                        ld (LevelBlockCount), a
+                        ret
 Move_BatLeft:
                         push ix
                         ld ix, spritetable+SPRITETABLE_SIZE
@@ -322,9 +379,8 @@ Move_BatRight:
                         call z, MoveBallToBat
 
 Move_BatRightDone
-                        pop af
                         pop ix
-                        jr Move_Done
+                        ret
 
 MoveBallToBat:
                         push ix

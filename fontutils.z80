@@ -1,15 +1,15 @@
-; hl - x, y
+; de - screen address
 ; a - ascii code
 DisplayChar:
-                        cp 58
+                        cp '9'+1
                         jr c, NumberChar
 
-                        sub 65
+                        sub 'A'
                         ld ix, fontCaps
                         jr CharDone
 
 NumberChar:
-                        sub 32
+                        sub '0'
                         ld ix, fontNumbers
 CharDone:                        
 
@@ -54,4 +54,20 @@ MoveToNextChar:
 
 DisplayStringDone:
                         pop hl
+                        ret
+
+; bc: pointer to string
+; returns x in h
+CentreString:
+                        call strlen
+
+                        add a
+                        add a
+
+                        ld h, a
+
+                        ld a, 128
+                        sub h
+
+                        ld h, a
                         ret

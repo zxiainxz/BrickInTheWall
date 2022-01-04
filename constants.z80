@@ -29,3 +29,13 @@ START_SCREEN                    EQU 0
 GAME_SCREEN                     EQU 1
 
 MAX_SPRITES                     EQU 10
+
+SCORE_DIGITS                    EQU 6
+
+NUMBER_OF_LEVELS                EQU 1
+
+START_SCENE                     EQU 0
+GAME_SCENE                      EQU 1
+GAMEOVER_SCENE                  EQU 2
+INTRO_SCENE                     EQU 3
+LEVELCOMPLETE_SCENE             EQU 4

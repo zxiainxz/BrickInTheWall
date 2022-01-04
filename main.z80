@@ -13,9 +13,14 @@ Code_Start:             EQU 0x7FFD
                         include "data.z80"
                         include "fontutils.z80"
                         include "game.z80"
+                        include "gameover.z80"
+                        include "leveldata.z80"
+                        include "levelintroscene.z80"
+                        include "levelcompletescene.z80"
                         include "levelutils.z80"
                         include "mathutils.z80"
                         include "random.z80"
+                        include "scoreutils.z80"
                         include "screenutils.z80"
                         include "spriteutils.z80"
                         include "startscreen.z80"
@@ -87,12 +92,46 @@ Interrupt:
                         push hl
                         push iy
 
-                        ld a, 5
-                        out (#fe), a                                    ; red border
+;                         ld h, 0
+;                         ld a, (currentloop)
+;                         ld l, a                                         
+;                         add hl, hl                                      ; double it
+;                         ld de, interruptenter                           ; load the initialisers table
+;                         add hl, de                                      ; point to the current loop initialiser
+;                         ld a, (hl)                                      ; load the address in the table into hl
+;                         inc hl
+;                         ld h, (hl)
+;                         ld l, a
 
+;                         ld a, h
+;                         cp 0
+;                         jr z, InterruptEntered
+
+;                         jp (hl)                                         ; jump to it
+
+; InterruptEntered:
                         call EraseAllSprites                            ; Remove the old sprites
                         
                         call DrawAllSprites                             ; Draw the new sprites
+
+;                         ld h, 0
+;                         ld a, (currentloop)
+;                         ld l, a                                         
+;                         add hl, hl                                      ; double it
+;                         ld de, interruptexit                            ; load the initialisers table
+;                         add hl, de                                      ; point to the current loop initialiser
+;                         ld a, (hl)                                      ; load the address in the table into hl
+;                         inc hl
+;                         ld h, (hl)
+;                         ld l, a
+
+;                         ld a, h
+;                         cp 0
+;                         jr z, InterruptExited
+
+;                         jp (hl)                                         ; jump to it
+
+; InterruptExited:
 
                         pop iy                                          ; pop it all back off the stack
                         pop hl
@@ -111,3 +150,4 @@ Interrupt:
 
 Code_Length:            EQU $-Code_Start + 1
         SAVESNA "main.sna", Code_Start
+        SAVETAP "main.tap", Code_Start

@@ -14,7 +14,7 @@ scadd:
                         add a, 64               ; 64 * 256 = 16384 = start of screen display
                         ld d, a                 ; line * 256
 
-                        ; find wgich third of the screen we're in
+                        ; find which third of the screen we're in
 
                         ld a, l                 ; restore y coord
                         and 192                 ; segment 0, 1 or 2 multiplied by 64
@@ -128,14 +128,76 @@ pixelattradd:
 
 
 ClearScreen:
-                        ld a, 56
                         ld hl, $4000
                         ld de, $4001
                         ld bc, 6144
                         ld (hl), l
                         ldir
+
+                        ld a, 56
                         ld bc, 767
                         ld (hl), a
                         ldir
                         ret
 
+ClearAttrs:
+                        ld hl, $5800
+                        ld de, $5801
+                        ld a, 56
+                        ld bc, 767
+                        ld (hl), a
+                        ldir
+                        ret
+
+FadeScreenToWhite:
+                        call ClearAttrs
+                        ld bc, 0x0800
+ClearCharRow:
+
+                        ld a, 23
+ClearNextCharRow:
+                        push af
+                        
+                        add a
+                        add a
+                        add a
+
+                        add b
+                        sub 1
+
+                        ld h, 0
+                        ld l, a
+
+                        call scadd
+                        call ClearRow
+
+                        pop af
+
+                        dec a
+                        cp 255
+                        jr nz, ClearNextCharRow
+
+                        halt
+                        halt
+                        halt      
+
+                        inc c
+                        djnz ClearCharRow
+
+                        ret
+
+ClearRow
+                        push af
+                        push bc
+
+                        ld b, 32
+
+                        xor a
+ClearBlock              ld (de), a
+                        inc de
+
+                        djnz ClearBlock
+
+                        pop bc
+                        pop af
+                        ret

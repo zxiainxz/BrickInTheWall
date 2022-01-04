@@ -1,0 +1,74 @@
+InitialiseScore:
+                        ld a, '0'
+                        ld hl, score
+                        ld b, SCORE_DIGITS
+ResetScore:
+                        ld (hl), a
+                        inc hl
+                        djnz ResetScore
+                        ret
+
+IncreaseScore:
+                        ld a, (hl)
+                        add a, b
+                        ld (hl), a
+                        cp '9' + 1
+                        ret c
+                        sub 10
+                        ld (hl), a                              ; is this needed
+IncreaseScore0:
+                        dec hl
+                        inc (hl)
+                        ld a, (hl)
+                        cp '9' + 1
+                        ret c
+                        sub 10
+                        ld (hl), a
+                        jr IncreaseScore0
+
+AddBrickScore:
+                        call DrawScore                          ; Erase the old score
+                        call Add100                             ; Add the main 100 points
+                        ld a, (bonusadder)
+
+                        cp 0
+                        jr z, DrawScore
+
+                        ld b, a
+AddBonus:               call Add10
+                        djnz AddBonus
+
+                        call DrawScore
+                        ret
+
+Add10:
+                        push hl
+                        push bc
+                        ld hl, score+4
+                        ld b, 1
+                        call IncreaseScore
+                        pop bc
+                        pop hl
+                        ret
+
+Add100:
+                        push hl
+                        push bc
+                        ld hl, score+3
+                        ld b, 1
+                        call IncreaseScore
+                        pop bc
+                        pop hl
+                        ret
+
+DrawScore:
+                        push hl
+                        push bc
+
+                        ld hl, 0x2d00
+                        ld bc, score
+                        call DisplayString
+
+                        pop bc
+                        pop hl
+                        ret

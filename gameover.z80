@@ -1,0 +1,21 @@
+GameOverInitialise:
+                        call InitialliseSpriteTable             ; Clear anything stored in the Sprite table by other scenes
+                        call ClearAttrs
+                        call FadeScreenToWhite
+
+
+                        ld hl, 0x5c3c                           ; 92, 60
+
+                        ld bc, gameover_string
+                        call DisplayString
+
+                        jp InitialiseFinished
+
+GameOverLoop:
+                        ld b, 200
+GOWaitLoop:             halt
+                        djnz GOWaitLoop
+
+                        ld a, START_SCENE
+                        ld (currentloop), a
+                        jp SwitchMainLoop

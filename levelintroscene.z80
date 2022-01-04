@@ -1,0 +1,133 @@
+IntroInitialise:
+                        push af
+
+                        call InitialliseSpriteTable             ; Clear anything stored in the Sprite table by other scenes
+                        call ClearAttrs
+                        call FadeScreenToWhite
+
+                        ld a, (currentlevel)
+                        inc a
+                        cp 10
+
+                        jr nc, MoreThanTen
+
+                        ld hl, level_string + 6
+                        add '0'
+                        ld (hl), a
+
+                        ld hl, 0x6440                           ; 100, 64
+
+LevelStringReady:
+                        ld bc, level_string
+                        call DisplayString
+
+                        call LoadCurrentLevel
+                        inc ix
+
+                        ld c, (ix)
+                        ld b, (ix + 1)
+
+                        call CentreString
+                        ld l, 96
+                        call DisplayString
+
+                        pop af
+                        jp InitialiseFinished
+
+MoreThanTen:
+                        cp 20
+                        jr nc, MoreThanTwenty
+
+                        sub 10
+
+                        ld d, 1
+                        ld e, a
+
+                        jr FillLevelString
+
+MoreThanTwenty:
+                        cp 30
+                        jr nc, MoreThanThirty
+
+                        sub 20
+
+                        ld d, 2
+                        ld e, a
+
+                        jr FillLevelString
+
+MoreThanThirty:
+                        cp 40
+                        jr nc, MoreThanForty
+
+                        sub 30
+
+                        ld d, 3
+                        ld e, a
+
+                        jr FillLevelString
+
+MoreThanForty:
+                        cp 50
+                        jr nc, MoreThanFifty
+                        
+                        sub 40
+
+                        ld d, 4
+                        ld e, a
+
+                        jr FillLevelString
+
+MoreThanFifty:                                      ; Support up to 50
+                        ld d, 5
+                        ld e, 0
+
+                        jr FillLevelString
+
+FillLevelString:
+                        ld hl, level_string+6
+                        ld a, d
+                        add '0'
+
+                        ld (hl), a
+
+                        inc hl
+                        ld a, e
+                        add '0'
+
+                        ld (hl), a
+
+                        ld hl, 0x603c                           ; 96, 60
+                        jr LevelStringReady
+
+; bc - string to count
+; returns length in a
+strlen:
+                        push bc
+
+                        ld a, 0
+checknextchar:          ex af, af'
+
+                        ld a, (bc)
+                        cp 0
+                        jr z, countfinished
+
+                        ex af, af'
+                        inc bc
+                        inc a
+                        jr checknextchar
+
+countfinished
+                        ex af, af'
+                        pop bc
+
+                        ret
+
+IntroLoop:
+                        ld b, 200
+IntroWaitLoop:          halt
+                        djnz IntroWaitLoop
+
+                        ld a, GAME_SCENE
+                        ld (currentloop), a
+                        jp SwitchMainLoop
