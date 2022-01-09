@@ -225,47 +225,68 @@ EraseBrick:
                         inc de
                         ld (de), a
 
-                        call scadd                              ; get the screen address for the pixel
+                        ; call scadd                              ; get the screen address for the pixel
 
-                        push ix
-                        call DrawBrickSprite
-                        pop ix
+                        ; push ix
+                        ; call DrawBrickSprite
+                        ; pop ix
 
-                        ; ex af, af'
-                        ; xor a
-                        ; ex af, af'
-
-                        ; call CheckAboveBrick
-                        ; call z, SetAboveBrick
-
-                        ; call CheckBelowBrick
-                        ; call z, SetBelowBrick
-
-                        ; call CheckLeftBrick
-                        ; call z, SetLeftBrick
-
-                        ; call CheckRightBrick
-                        ; call z, SetRightBrick
-
-                        ; ex af, af'
-
-                        ; ex af, af'
+                        ex af, af'
+                        xor a
+                        ex af, af'
 
                         call CheckAboveBrick
-                        call z, EraseAboveLine
-                        call nz, DrawInnerAboveLine
+                        call nz, SetAboveBrick
 
                         call CheckBelowBrick
-                        call z, EraseBelowLine
-                        call nz, DrawInnerBelowLine
+                        call nz, SetBelowBrick
 
-                        ld a, b
-                        cp 0
-                        call nz, MaybeCheckLeftBrick
+                        call CheckLeftBrick
+                        call nz, SetLeftBrick
 
-                        ld a, b
-                        cp 15
-                        call nz, MaybeCheckRightBrick
+                        call CheckRightBrick
+                        call nz, SetRightBrick
+
+                        ex af, af'
+                        push iy
+                        push hl
+
+                        ld iy, erasetable
+                        ld h, 0
+                        ld l, a
+                        add hl, hl
+
+                        ex hl, de
+                        add iy, de
+
+                        ld a, (iy)
+                        ld d, (iy + 1)
+                        ld e, a
+
+                        ld iy, de
+
+                        pop hl
+                        jp (iy)
+
+                        pop iy
+
+                        ex af, af'
+
+                        ; call CheckAboveBrick
+                        ; call z, EraseAboveLine
+                        ; call nz, DrawInnerAboveLine
+
+                        ; call CheckBelowBrick
+                        ; call z, EraseBelowLine
+                        ; call nz, DrawInnerBelowLine
+
+                        ; ld a, b
+                        ; cp 0
+                        ; call nz, MaybeCheckLeftBrick
+
+                        ; ld a, b
+                        ; cp 15
+                        ; call nz, MaybeCheckRightBrick
 
                         ret
 
@@ -911,7 +932,7 @@ E2NextRow:
 
                         djnz E2NextRow
 
-                        ld 1, 255
+                        ld a, 255
                         ld (de), a
                         inc de
                         ld (de), a
@@ -978,9 +999,11 @@ Erase13:
                         
                         call scadd
 
-                        ld a, 255
+                        ld a, 127
                         ld (de), a
-                        inc a
+                        inc de
+
+                        ld a, 254
                         ld (de), a
                         dec de
 
@@ -993,6 +1016,7 @@ E13NextRow:
                         ld a, 128
                         ld (de), a
 
+                        ld a, 1
                         inc de                                  ; erase brick
                         ld (de), a              
 
@@ -1004,7 +1028,7 @@ E13NextRow:
 
                         djnz E13NextRow
 
-                        ld 1, 255
+                        ld a, 0
                         ld (de), a
                         inc de
                         ld (de), a
