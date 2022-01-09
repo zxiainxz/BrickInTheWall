@@ -49,7 +49,7 @@ MoveToNextChar:
                         ld a, h
                         add 8
                         ld h, a
-                        inc c
+                        inc bc
                         jr DisplayNextChar
 
 DisplayStringDone:

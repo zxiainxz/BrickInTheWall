@@ -42,15 +42,18 @@ Wait_Timer:
 
                         ld a, (LevelBlockCount)
                         cp 0
-                        jr z, LevelComplete
+                        jp z, LevelComplete
 
                         call CheckYEdgeCollision
                         call CheckXEdgeCollision
 
                         call CheckLoseBall
-                        jr z, RestartLife
+                        jp z, RestartLife
 
                         jr MainGameLoop
+
+GameLoopDraw:
+                        jp InterruptDrawFinished
 
 LevelComplete:
 
@@ -62,6 +65,14 @@ LevelComplete:
                         ld (currentloop), a
                         jp SwitchMainLoop
                         
+RestartLife:
+                        call ResetBallBat
+                        ld a, (lives)
+                        cp 0
+                        jr z, GameOver
+
+                        jp MainGameLoop
+
 StartLevel:
                         xor a                                           ; Stationary ball to start
                         ld (yballdir), a
@@ -69,6 +80,7 @@ StartLevel:
 
                         call FadeScreenToWhite
                         call ResetLevel
+                        call LoadLevel
                         call DisplayLevel
                         ret
 
@@ -90,14 +102,6 @@ ResetBallBat:
                         ld (yballdir), a
                         ld (xballdir), a
                         ret
-
-RestartLife:
-                        call ResetBallBat
-                        ld a, (lives)
-                        cp 0
-                        jr z, GameOver
-
-                        jr MainGameLoop
 
 DrawLives:
                         ld a, (lives)

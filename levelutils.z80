@@ -48,6 +48,8 @@ PixelNoOffset2LevelMap:
 ; inputs b - brick x, c - brick y
 ; outputs: h - pixel x, l - pixel y
 Brick2Pixel:
+                        push af
+
                         ld a, b
                         add a, a
                         add a, a
@@ -64,10 +66,16 @@ Brick2Pixel:
                         add 32                          ; y offset
 
                         ld l, a
+
+                        pop af
                         ret
 
 ; Does not take offset into account
 Pixel2Brick:
+                        ld a, l
+                        sub 32
+                        ld l, a
+
                         srl h
                         srl h
                         srl h
@@ -108,56 +116,32 @@ ResetNextBrick
                         pop hl
                         ret
 
-; DispalyLevel - Displays the level stored in LevelMap
-DisplayLevel:
+; LoadLevel - Loads the current level into the LevelMap
+LoadLevel:
                         call LoadCurrentLevel
                         ld b, (ix)                                       ; brick count
                         ld a, b
                         ld (LevelBlockCount), a
                         ld c, 0
+
+                        ld de, LevelMap
                         inc ix                                          ; Put ix after the level name
                         inc ix
                         inc ix
 
-DisplayNextBrick:
+LoadNextBrick:
                         ld a, (ix)                                      ; check if ix is a colour command           
                         cp 255
                         jp z, SetBrickColour
 
-                        ld hl, (ix)
-                        ld a, l
-                        add 32
+                        ld h, 0
                         ld l, a
-                        call scadd
-
-                        push ix
-                        push hl
-                        call DrawBrickSprite
-                        pop hl
-                        pop ix
-
-                        call pixelattradd
-                        ld a, c                                         ; put the colour into the attrs
-                        ld (de), a
-                        inc de
-                        ld (de), a
-
-                        push hl
-
-                        call Pixel2LevelMap
-
-                        ld a, 1
-                        ld (hl), a
-
-                        pop hl
+                        
+                        add hl, de
+                        ld (hl), c
 
                         inc ix
-                        inc ix
-
-                        djnz DisplayNextBrick
-
-                        call GenerateOutline
-                        call DrawOutline
+                        djnz LoadNextBrick
                         ret
 
 SetBrickColour:
@@ -166,410 +150,427 @@ SetBrickColour:
                         ld c, a
                         inc ix
                         inc ix
-                        jr DisplayNextBrick                             ; Don't count colour instructions
-                                                                        ; towards the number of blocks so skip djnz
+                        jr LoadNextBrick                             ; Don't count colour instructions
+                                                                     ; towards the number of blocks so skip djnz
 
-; 76543210
-; 000ablrc
-GenerateOutline:
-                        ld hl, LevelMap
-                        call GOProcessFirstRow
-
-                        ld b, 14
-GOPR:                   call GOProcessRow
-                        djnz GOPR
-
-                        call GOProcessLastRow
-                        ret
-
-GOProcessFirstRow:
-                        ld a, (hl)
-                        cp 0
-                        jr z, GOPFRCheckMiddle
-
-                        ; process first brick
-
-                        or 4
-                        ld (hl), a
-                        push hl
-                        call GOProcessRightBrick
-                        pop hl
-
-                        push hl
-                        call GOProcessBelowBrick
-                        pop hl
-
-GOPFRCheckMiddle:
-                        inc hl
-                        ld b, 14
-
-GOPFirstRowMiddle:
-                        ld a, (hl)
-                        cp 0
-                        jr z, GOPFRMiddleNext
-
-                        ld (hl), a
-
-                        push hl
-                        call GOProcessLeftBrick
-                        pop hl
-
-                        push hl
-                        call GOProcessRightBrick
-                        pop hl
-
-                        push hl
-                        call GOProcessBelowBrick
-                        pop hl
-
-GOPFRMiddleNext:
-                        inc hl
-                        djnz GOPFirstRowMiddle
-
-                        ld a, (hl)
-                        cp 0
-                        jr z, GOFRDone
-
-                        or 2
-                        ld (hl), a
-
-                        ; process last brick
-                        push hl
-                        call GOProcessLeftBrick
-                        pop hl
-
-                        push hl
-                        call GOProcessBelowBrick
-                        pop hl
-
-GOFRDone:
-                        inc hl
-
-                        ret
-
-GOProcessRow:
-                        ld a, (hl)
-                        cp 0
-                        jr z, GOPRCheckMiddle
-
-                        or 4
-                        ld (hl), a
-
-                        push hl
-                        call GOProcessRightBrick
-                        pop hl
-
-                        push hl
-                        call GOProcessAboveBrick
-                        pop hl
-
-                        push hl
-                        call GOProcessBelowBrick
-                        pop hl
-
-GOPRCheckMiddle:
-                        inc hl
-
-                        push bc
-
-                        ld b, 14
-
-GOPRowMiddle:
-                        ld a, (hl)
-                        cp 0
-                        jr z, GOPRNext
-
-                        push hl
-                        call GOProcessLeftBrick
-                        pop hl
-
-                        push hl
-                        call GOProcessRightBrick
-                        pop hl
-
-                        push hl
-                        call GOProcessAboveBrick
-                        pop hl
-
-                        push hl
-                        call GOProcessBelowBrick
-                        pop hl
-GOPRNext:
-                        inc hl
-                        djnz GOPRowMiddle
-
-                        pop bc
-
-                        ld a, (hl)
-                        cp 0
-                        jr z, GOPRDone
-
-                        or 2
-                        ld (hl), a
-
-                        ; process last brick
-                        push hl
-                        call GOProcessLeftBrick
-                        pop hl
-
-                        push hl
-                        call GOProcessAboveBrick
-                        pop hl
-
-                        push hl
-                        call GOProcessBelowBrick
-                        pop hl
-GOPRDone:
-                        inc hl
-                        ret
-
-GOProcessLastRow:
-                        ld a, (hl)
-                        cp 0
-                        jr z, GOPLRMiddle
-
-                        or 4
-                        ld (hl), a
-
-                        push hl
-                        call GOProcessRightBrick
-                        pop hl
-
-                        push hl
-                        call GOProcessAboveBrick
-                        pop hl
-GOPLRMiddle:
-                        inc hl
-
-                        ld b, 14
-
-GOPLastRowMiddle:
-                        ld a, (hl)
-                        cp 0
-                        jr z, GOPLRNext
-
-                        ld (hl), a
-
-                        push hl
-                        call GOProcessLeftBrick
-                        pop hl
-
-                        push hl
-                        call GOProcessRightBrick
-                        pop hl
-
-                        push hl
-                        call GOProcessAboveBrick
-                        pop hl
-
-GOPLRNext:
-                        inc hl
-                        djnz GOPLastRowMiddle
-
-                        ld a, (hl)
-                        cp 0
-                        ret z
-
-                        or 2
-                        ld (hl), a
-
-                        ; process last brick
-                        push hl
-                        call GOProcessLeftBrick
-                        pop hl
-
-                        push hl
-                        call GOProcessAboveBrick
-                        pop hl
-
-                        ret
-
-; There must be some self-modifying code that could set the bit number this code doesn't need duplicated
-GOProcessLeftBrick:
-                        dec hl
-                        ld a, (hl)
-                        cp 0
-                        ret z
-                        set 1, a
-                        ld (hl), a
-                        ret
-
-GOProcessRightBrick:
-                        inc hl
-                        ld a, (hl)
-                        cp 0
-                        ret z
-                        set 2, a
-                        ld (hl), a
-                        ret
-
-GOProcessAboveBrick:
-                        ld de, 16
-                        sbc hl, de
-
-                        ld a, (hl)
-                        cp 0
-                        ret z
-                        set 3, a
-                        ld (hl), a
-                        ret
-
-GOProcessBelowBrick:
-                        ld de, 16
-                        add hl, de
-                        ld a, (hl)
-                        cp 0
-                        ret z
-                        set 4, a
-                        ld (hl), a
-                        ret
-
-DrawOutline:
+DisplayLevel:
+                        ld iy, LevelMap
                         ld c, 0
-                        ld hl, LevelMap
 
-DODrawRow:
+DisplayNextRow:
                         ld b, 0
 
-DODrawNextBrick:
-                        ld a, (hl)
+DisplayNextBrick:
+                        ld a, (iy)
                         cp 0
-                        jr z, DOMoveToNextBrick
+                        jr z, MoveToNextBrick
 
-                        call DrawBrickOutline
+                        call DrawBrick
 
-DOMoveToNextBrick:
-                        inc hl
-
+MoveToNextBrick:
+                        inc iy
                         inc b
                         ld a, b
                         cp 16
-                        jr nz, DODrawNextBrick
+                        jr nz, DisplayNextBrick
 
                         inc c
                         ld a, c
                         cp 16
-                        jr nz, DODrawRow
+                        jr nz, DisplayNextRow
 
                         ret
 
-DrawBrickOutline:
+; Draw Brick - draws the brick and any required border
+; inputs - a: brick colour
+;         iy: points to the brick in the LevelMap
+;          b: x in brick space
+;          c: y in brick space
+DrawBrick:
+                        call Brick2Pixel                                ; hl points to the pixel x,y
 
-                        bit 1, a
-                        call z, DODrawRightEdge
-
-                        bit 2, a
-                        call z, DODrawLeftEdge
-
-                        bit 3, a
-                        call z, DODrawBottomEdge
-
-                        bit 4, a
-                        call z, DODrawTopEdge
-
-                        ret
-
-DODrawRightEdge:
-                        push hl
-
-                        inc b
-                        call Brick2Pixel
-                        dec b
-
-                        call scadd
-
-                        push bc
-
-                        ld a, 128
-                        call DrawVerticalLine
-
-                        pop bc
-                        pop hl
-                        ret
-
-DODrawLeftEdge:
-                        push hl
-
-                        call Brick2Pixel
-                        dec h
-
-                        call scadd
-
-                        push bc
-                        
-                        ld a, 1
-                        call DrawVerticalLine
-
-                        pop bc
-                        pop hl
-
-                        ret
-
-DrawVerticalLine:
-                        ld b, 8
-
-                        ex af, af'
-                        ld a, l
-                        ex af, af'
-DrawNextVertical:       
-                        push bc
-                        ld c, a
-                        ld a, (de)
-                        or c                 
-                        ld (de), a
-                        pop bc
-                        
-                        ex af, af'
-                        call nextrow
-                        ex af, af'
-
-                        djnz DrawNextVertical
-                        ret
-
-DODrawBottomEdge:
-                        push hl
-
-                        inc c
-                        call Brick2Pixel
-                        dec c
-
-                        call scadd
-
-                        ld a, 255
+                        call pixelattradd                               ; Set the attributes
                         ld (de), a
                         inc de
                         ld (de), a
+                        call scadd                                      ; de points to the screen address
 
-                        pop hl
+                        call DrawBrickSprite
+
+                        call CheckAboveBrick
+                        call z, DrawAboveLine
+
+                        call CheckBelowBrick
+                        call z, DrawBelowLine
+
+                        call CheckLeftBrick
+                        call z, DrawRightLine
+
+                        call CheckRightBrick
+                        call z, DrawLeftLine
+
                         ret
 
-DODrawTopEdge:
+; EraseBrick - Removes the brick and adjusts the border appropriately
+; inputs - iy: points to the brick in the LevelMap
+;           b: x in brick space
+;           c: y in brick space
+;           h: x in pixel space
+;           l: y in pixel space
+EraseBrick:
+                        call pixelattradd                       ; get the attr address for the brick
+
+                        ld a, 56                                ; 56 is white paper, black ink
+                        ld (de), a                              ; put it into the two adjacent character spaces
+                        inc de
+                        ld (de), a
+
+                        call scadd                              ; get the screen address for the pixel
+
+                        push ix
+                        call DrawBrickSprite
+                        pop ix
+
+                        ; ex af, af'
+                        ; xor a
+                        ; ex af, af'
+
+                        ; call CheckAboveBrick
+                        ; call z, SetAboveBrick
+
+                        ; call CheckBelowBrick
+                        ; call z, SetBelowBrick
+
+                        ; call CheckLeftBrick
+                        ; call z, SetLeftBrick
+
+                        ; call CheckRightBrick
+                        ; call z, SetRightBrick
+
+                        ; ex af, af'
+
+                        ; ex af, af'
+
+                        call CheckAboveBrick
+                        call z, EraseAboveLine
+                        call nz, DrawInnerAboveLine
+
+                        call CheckBelowBrick
+                        call z, EraseBelowLine
+                        call nz, DrawInnerBelowLine
+
+                        ld a, b
+                        cp 0
+                        call nz, MaybeCheckLeftBrick
+
+                        ld a, b
+                        cp 15
+                        call nz, MaybeCheckRightBrick
+
+                        ret
+
+MaybeCheckLeftBrick:
+                        call CheckLeftBrick
+                        call z, EraseLeftLine
+                        call nz, DrawInnerLeftLine
+                        ret
+
+MaybeCheckRightBrick:
+                        call CheckRightBrick
+                        call z, EraseRightLine
+                        call nz, DrawInnerRightLine
+                        ret
+
+SetAboveBrick:
+                        ex af, af'
+                        set 0, a
+                        ex af, af'
+
+                        ret
+
+SetBelowBrick:
+                        ex af, af'
+                        set 1, a
+                        ex af, af'
+
+                        ret
+
+SetLeftBrick:
+                        ex af, af'
+                        set 2, a
+                        ex af, af'
+
+                        ret
+
+SetRightBrick:
+                        ex af, af'
+                        set 3, a
+                        ex af, af'
+
+                        ret
+
+CheckAboveBrick:
+                        ld a, c
+                        cp 0
+                        ret z
+
+                        ld de, 16
                         push hl
 
-                        call Brick2Pixel
+                        push iy
+                        pop hl
+                        
+                        sbc hl, de
+
+                        push hl
+                        pop iy
+
+                        pop hl
+
+                        ld a, (iy)
+
+                        cp 0
+
+                        add iy, de
+                        ret
+                        
+DrawAboveLine:
+                        push af
+                        push hl
 
                         dec l
-
                         call scadd
-
                         ld a, 255
                         ld (de), a
                         inc de
                         ld (de), a
 
                         pop hl
+                        pop af
+                        ret
+
+DrawInnerAboveLine:
+                        push hl
+
+                        call scadd
+
+                        ld a, 255
+                        ld (de), a
+
+                        inc de
+                        ld (de), a
+
+                        pop hl
+                        ret
+
+EraseAboveLine:
+                        push af
+                        push hl
+
+                        dec l
+                        call scadd
+                        ld a, 0
+                        ld (de), a
+                        inc de
+                        ld (de), a
+
+                        pop hl
+                        pop af
+                        ret
+
+CheckBelowBrick:
+                        ld a, c
+                        cp 15
+                        ret z
+
+                        ld de, 16
+
+                        add iy, de
+                        ld a, (iy)
+
+                        push hl
+
+                        push iy
+                        pop hl
+
+                        sbc hl, de
+
+                        push hl
+                        pop iy
+
+                        pop hl
+
+                        cp 0
+                        ret
+                        
+DrawBelowLine:
+                        push af
+                        push hl
+                        ld a, l
+                        add 8
+                        ld l, a
+                        call scadd
+                        ld a, 255
+                        ld (de), a
+                        inc de
+                        ld (de), a
+
+                        pop hl
+                        pop af
+                        ret
+
+DrawInnerBelowLine:
+                        push hl
+
+                        ld a, l
+                        add 7
+                        ld l, a
+                        call scadd
+
+                        ld a, 255
+                        ld (de), a
+
+                        inc de
+                        ld (de), a
+
+                        pop hl
+                        ret
+
+EraseBelowLine:
+                        push af
+                        push hl
+
+                        ld a, l
+                        add 8
+                        ld l, a
+                        call scadd
+
+                        ld a, 0
+                        ld (de), a
+                        inc de
+                        ld (de), a
+
+                        pop hl
+                        pop af
+                        ret
+
+ClearZAndReturn:
+                        or 1                                    ; Clear z
+                        ret
+
+CheckLeftBrick:
+                        ld a, b
+                        cp 0
+                        jr z, ClearZAndReturn
+
+                        dec iy
+                        ld a, (iy)
+                        cp 0
+
+                        inc iy
+
+                        ret
+                        
+DrawRightLine:
+                        push hl
+
+                        dec h
+                        call scadd
+
+                        ld a, 1
+                        call DrawVerticalLine8
+                        pop hl
+
+                        ret
+
+DrawInnerRightLine:
+                        push hl
+
+                        ld a, h
+                        add 8
+                        ld h, a
+
+                        call scadd
+
+                        ld a, 1
+                        call DrawVerticalLine8
+                        pop hl
+
+                        ret
+
+EraseRightLine:
+                        push af
+                        push hl
+
+                        ld a, h
+                        add 16
+                        ld h, a
+                        call scadd
+
+                        ld a, 128
+                        call EraseVerticalLine8
+
+                        pop hl
+                        pop af
+                        ret
+
+CheckRightBrick:
+                        ld a, b
+                        cp 15
+                        jr z, ClearZAndReturn
+
+                        inc iy
+                        ld a, (iy)
+                        cp 0
+
+                        dec iy
+
+                        ret
+                        
+DrawLeftLine:
+                        push hl
+
+                        ld a, h
+                        add 16
+                        ld h, a
+
+                        call scadd
+
+                        ld a, 128
+                        call DrawVerticalLine8
+                        pop hl
+
+                        ret
+
+DrawInnerLeftLine:
+                        push hl
+
+                        call scadd
+
+                        ld a, 128
+                        call DrawVerticalLine8
+                        pop hl
+
+                        ret
+
+EraseLeftLine:
+                        push af
+                        push hl
+
+                        dec h
+                        call scadd
+
+                        ld a, 1
+                        call EraseVerticalLine8
+
+                        pop hl
+                        pop af
                         ret
 
 ; CheckBrickCollision - Check if the ball has collided with any of the bricks
 ; Inputs: hl - x, y of the ball
 ; Outputs: z - set to indicate collision
 CheckBrickCollision:
-                        push ix                                         ; store ix because LoadCurrentLevel will destroy
-                        call LoadCurrentLevel
-                        push ix                                         ; copy ix to iy
-                        pop iy
-                        pop ix                                          ; restore original ix
-
                         ld a, l
                         cp 23                                           ; y-offset
                         ret c
@@ -577,57 +578,50 @@ CheckBrickCollision:
                         cp 168                                          ; bottom of possible bricks
                         ret nc
 
-                        ld b, (iy)                                      ; number of bricks
-                        inc iy                                          ; start of block data
-                        inc iy
-                        inc iy
+                        ld iy, LevelMap                                 ; point to the LevelMap
+                        ld c, 0                                         ; y = 0
+
+CheckRow:
+                        ld b, 0                                         ; x = 0
 
 CheckBrick:
-                        ld a, (iy)                                      ;
-                        cp 255                                          ; is it a colour instruction?
-                        jr z, SkipColour                                ; skip colour instruction
-
-                        ; push bc                                         ; store the brick counter
-                        ; ld bc, (iy)
-                        ; push hl
-
-                        ; push bc
-                        ; pop hl
-                        push hl
-                        ld hl, (iy)
-                        call PixelNoOffset2LevelMap
-                        ld a, (hl)
-                        and 1
-
-                        pop hl
-
+                        ld a, (iy)
+                        cp 0                                            ; Check an empty slot
                         jr z, CheckNextBrick
 
-                        push bc
-                        ld bc, (iy)
-                        ld a, c
-                        add 32
-                        ld c, a
+                        push bc                                         ; Store bc
+
+                        push hl                                         ; store hl
+                        call Brick2Pixel                                ; convert brick slot to pixel in hl
+                        push hl                                         ; copy hl -> bc
+                        pop bc
+
+                        pop hl                                          ; restore hl
+
                         call CheckCollision8v16x8v8                     ; Check if the ball has entered the 8x8 
-                        pop bc                                          ; restore the brick count
+                        pop bc                                          ; restore the brick counters
 
                         jr z, BrickCollision                            ; check the fine grained collisions
 CheckNextBrick:
-                        inc iy                                          ; move to the next brick struct
-                        inc iy
+                        inc iy                                          ; move to the next brick
+                        inc b                                           ; next x
 
-                        djnz CheckBrick                                 ; check next brick
+                        ld a, b
+                        cp 16                                           ; check not end of row
+                        jr nz, CheckBrick
+                                                                        ; end of row
+                        inc c                                           ; move to next row
+                        ld a, c                                         ; check not end of bricks
+                        cp 16
+                        jr nz, CheckRow
+
                         ret
-
-SkipColour:
-                        inc iy
-                        inc iy
-                        jr CheckBrick
 
 ; inputs - iy set to the collision brick
 BrickCollision:
                         push hl
-                        ld hl, (iy)
+
+                        call Brick2Pixel                                ; hl contains pixel x,y of brick
 
                         push bc
                         call CheckFineGrainCollision            ; check fine grained collision
@@ -710,43 +704,21 @@ CheckInnerBox:
                         ret
 
 ; RemoveBrick - Remove the brick from the screen
-; Inputs: h - x coord of the brick
-;         l - y coord of the brick
-;         ix - index to brick structure
+
 RemoveBrick
+                        ; bc: brick x,y
+                        ; iy: brick in levelmap
+                        ; hl: ball x,y
+
                         push hl                                 ; Store hl cos stuff trashes it
 
-                        ; FIXME: At some point before calling remove brick
-                        ; hl has the ball coords
-                        ld hl, (iy)
+                        call Brick2Pixel                        ; hl now has brick pixel x,y
 
-                        push hl
-
-                        call PixelNoOffset2LevelMap
                         xor a
-                        ld (hl), a
+                        ld (iy), a                              ; erase brick
 
-                        pop hl
+                        call EraseBrick
 
-                        ld a, l
-                        add 32
-                        ld l, a
-
-                        call pixelattradd                       ; get the attr address for the brick
-
-                        ld a, 56                                ; 56 is white paper
-                        ld (de), a                              ; put it into the two adjacent character spaces
-                        inc e
-                        ld (de), a
-
-                        call scadd                              ; get the screen address for the pixel
-
-                        push ix
-                        push hl
-                        call DrawBrickSprite                    ; Draw the brick over the old brick to remove it
-                        pop hl
-                        call UpdateOutline
-                        pop ix
                         pop hl
 
                         call AddBrickScore
@@ -758,118 +730,292 @@ RemoveBrick
                         ld a, (LevelBlockCount)
                         dec a
                         ld (LevelBlockCount), a
+
                         ret
 
-; Update the outline for the block at pixel h,l
-UpdateOutline:
-                        push bc
+EraseBorderDone:
+                        ret
 
-                        push hl
-                        ld a, l
-                        sub 32
-                        ld l, a
-                        call Pixel2Brick
+Erase0:
+                        ; Erase all borders
+                        ; No Inner border
 
-                        push hl
-                        pop bc
+                        dec l
+                        ex af, af'
+                        ld a, l                                 ; Load y into a' for nextrow
+                        ex af, af'
 
-                        ld a, h
-                        cp 0
+                        dec l                                   ; previous row to delete the border
+                        call scadd                              ; screen address
 
-                        push hl
-                        call nz, RemoveProcessLeftBrick
-                        pop hl
+                        xor a                                   ; a to 0
 
-                        cp 15
-
-                        push hl
-                        call nz, RemoveProcessRightBrick
-                        pop hl
-
-                        ld a, l
-                        cp 0
+                        ld (de), a                              ; erase the top border
+                        inc de
+                        ld (de), a
+                        dec de
                         
-                        push hl
-                        call nz, RemoveProcessAboveBrick
-                        pop hl
+                        ld b, 8
+E0NextRow:
+                        ex af, af'
+                        call nextrow                            ; next row
+                        ex af, af'
 
-                        cp 15
+                        dec de                                  ; erase left border
+                        ld a, (de)
+                        ld c, 1
+                        xor c
+                        ld (de), a
 
-                        push hl
-                        call nz, RemoveProcessBelowBrick
-                        pop hl
+                        xor a                                   ; erase the brick
+                        inc de
+                        ld (de), a
+                        inc de
+                        ld (de), a
+                        inc de
 
-                        pop hl
-                        pop bc
-                        ret
+                        ld a, (de)                              ; erase right border
+                        ld c, 128
+                        xor c
+                        ld (de), a
 
-RemoveProcessLeftBrick:
-                        call Brick2LevelMap
+                        dec de
+                        dec de
 
-                        dec hl
-                        ld a, (hl)
-                        cp 0
-                        ret z
-                        res 1, a
-                        ld (hl), a
+                        djnz E0NextRow
 
-                        dec b
+                        ex af, af'
+                        call nextrow
+                        ex af, af'
 
-                        call DrawBrickOutline
+                        xor a                                   ; erase bottom border
+                        ld (de), a
+                        inc de
+                        ld (de), a
 
-                        inc b
-                        ret
+                        jp EraseBorderDone
 
-RemoveProcessRightBrick:
-                        call Brick2LevelMap
 
-                        inc hl
-                        ld a, (hl)
-                        cp 0
-                        ret z
-                        res 2, a
-                        ld (hl), a
+Erase1:
+                        ; Erase left, right, bottom borders
+                        ; Draw top line
+                        ex af, af'
+                        ld a, l
+                        ex af, af'
+                        
+                        call scadd
 
-                        inc b
+                        dec de
+                        ld a, (de)
+                        ld c, 1
+                        xor c
+                        ld (de), a
 
-                        call DrawBrickOutline
+                        inc de
+                        ld a, 255
+                        ld (de), a
+                        inc de
+                        ld (de), a
+                        inc de
 
-                        dec b
-                        ret
+                        ld a, (de)
+                        ld c, 128
+                        xor c
+                        ld (de), a
+                        dec de
+                        dec de
+                        dec de
 
-RemoveProcessAboveBrick:
-                        call Brick2LevelMap
+                        ld b, 7
+E1NextRow:
+                        dec de                                  ; erase left border
+                        ld a, (de)
+                        ld c, 1
+                        xor c
+                        ld (de), a
 
-                        ld de, 16
-                        sbc hl, de
+                        xor a
+                        inc de                                  ; erase brick
+                        ld (de), a              
+                        inc de
+                        ld (de), a
 
-                        ld a, (hl)
-                        cp 0
-                        ret z
-                        res 3, a
-                        ld (hl), a
+                        inc de                                  ; erase right border
+                        ld a, (de)
+                        ld c, 128
+                        xor c
+                        ld (de), a
 
-                        dec c
+                        dec de
+                        dec de
 
-                        call DrawBrickOutline
+                        ex af, af'
+                        call nextrow
+                        ex af, af'
 
-                        inc c
-                        ret
+                        djnz E1NextRow
 
-RemoveProcessBelowBrick:
-                        call Brick2LevelMap
+                        xor a                                   ; erase bottom border
+                        ld (de), a
+                        inc de
+                        ld (de), a
 
-                        ld de, 16
-                        add hl, de
-                        ld a, (hl)
-                        cp 0
-                        ret z
-                        res 4, a
-                        ld (hl), a
+                        jp EraseBorderDone
 
-                        inc c
+Erase2:
+                        ; Erase left, right, top borders
+                        ; Draw bottom line
+                        dec l
+                        ex af, af'
+                        ld a, l
+                        ex af, af'
+                        
+                        call scadd
 
-                        call DrawBrickOutline
+                        ld a, 255
+                        ld (de), a
+                        inc a
+                        ld (de), a
+                        dec de
 
-                        dec c
-                        ret
+                        ex af, af'
+                        call nextrow
+                        ex af, af'
+
+                        ld b, 7
+E2NextRow:
+                        dec de                                  ; erase left border
+                        ld a, (de)
+                        ld c, 1
+                        xor c
+                        ld (de), a
+
+                        xor a
+                        inc de                                  ; erase brick
+                        ld (de), a              
+                        inc de
+                        ld (de), a
+
+                        inc de                                  ; erase right border
+                        ld a, (de)
+                        ld c, 128
+                        xor c
+                        ld (de), a
+
+                        dec de
+                        dec de
+
+                        ex af, af'
+                        call nextrow
+                        ex af, af'
+
+                        djnz E2NextRow
+
+                        ld 1, 255
+                        ld (de), a
+                        inc de
+                        ld (de), a
+
+                        jp EraseBorderDone
+
+Erase3:
+                        ; erase l&r
+                        ; draw t&b
+                        jp EraseBorderDone
+
+Erase4:
+                        ; erase t, b, r
+                        ; draw l
+                        jp EraseBorderDone
+
+Erase5:
+                        ; erase b, r
+                        ; draw l, r
+                        jp EraseBorderDone
+
+Erase6:
+                        ; erase t, r
+                        ; draw l, b
+                        jp EraseBorderDone
+
+Erase7:
+                        ; erase r
+                        ; draw t, l, b
+                        jp EraseBorderDone
+
+Erase8:
+                        ; erase t, l, b
+                        ; draw r
+                        jp EraseBorderDone
+
+Erase9:
+                        ; erase l, b
+                        ; draw t, r
+                        jp EraseBorderDone
+
+Erase10:
+                        ; erase l, t
+                        ; draw r, b
+                        jp EraseBorderDone
+
+Erase11:
+                        ; erase l
+                        ; draw t, r, b
+                        jp EraseBorderDone
+
+Erase12:
+                        ; erase t, b
+                        ; draw l, r
+                        jp EraseBorderDone
+
+Erase13:
+                        ; erase b
+                        ; draw l, t , r
+
+                        ex af, af'
+                        ld a, l
+                        ex af, af'
+                        
+                        call scadd
+
+                        ld a, 255
+                        ld (de), a
+                        inc a
+                        ld (de), a
+                        dec de
+
+                        ex af, af'
+                        call nextrow
+                        ex af, af'
+
+                        ld b, 7
+E13NextRow:
+                        ld a, 128
+                        ld (de), a
+
+                        inc de                                  ; erase brick
+                        ld (de), a              
+
+                        dec de
+
+                        ex af, af'
+                        call nextrow
+                        ex af, af'
+
+                        djnz E13NextRow
+
+                        ld 1, 255
+                        ld (de), a
+                        inc de
+                        ld (de), a
+
+                        jp EraseBorderDone
+
+Erase14:
+                        ; erase t
+                        ; draw l, b, r
+                        jp EraseBorderDone
+
+Erase15:
+                        ; Empty by design
+                        jp EraseBorderDone

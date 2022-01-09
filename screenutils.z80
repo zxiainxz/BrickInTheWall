@@ -201,3 +201,57 @@ ClearBlock              ld (de), a
                         pop bc
                         pop af
                         ret
+
+; Draw a vertical line
+; a - bit location of line
+; de - screen address
+DrawVerticalLine8:
+                        push bc
+
+                        ld b, 8
+                        ex af, af'
+                        ld a, l
+                        ex af, af'
+
+DrawNextLine:
+                        ld c, a
+                        ld a, (de)
+                        or c
+                        ld (de), a
+                        ld a, c
+
+                        ex af, af'
+                        call nextrow
+                        ex af, af'
+
+                        djnz DrawNextLine   
+                        pop bc
+                        ret
+
+; Erase a vertical line
+; a - bits to erase
+; de - screen address
+EraseVerticalLine8:
+                        push bc
+
+                        ld b, 8
+                        ex af, af'
+                        ld a, l
+                        ex af, af'
+
+EraseNextLine:
+                        ld c, a
+                        ld a, (de)
+
+                        xor c
+                        ld (de), a
+                        ld a, c
+
+EraseMoveToNextLine:
+                        ex af, af'
+                        call nextrow
+                        ex af, af'
+
+                        djnz EraseNextLine   
+                        pop bc
+                        ret

@@ -81,6 +81,7 @@ ShiftLeft1:
 ;          l - y coordinate
 DrawSprite16x8:
                         push bc
+                        push hl
 
                         ld a, h
                         ld (tmpx), a
@@ -146,6 +147,7 @@ Draw16:
                         
                         djnz DrawRow16
 
+                        pop hl
                         pop bc
 
                         ret

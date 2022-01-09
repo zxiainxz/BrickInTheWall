@@ -110,9 +110,29 @@ Interrupt:
 ;                         jp (hl)                                         ; jump to it
 
 ; InterruptEntered:
-                        call EraseAllSprites                            ; Remove the old sprites
+                        ; call EraseAllSprites                            ; Remove the old sprites
                         
-                        call DrawAllSprites                             ; Draw the new sprites
+                                                                        ; FIXME: Might be nice to cache this for speed
+                        ld h, 0
+                        ld a, (currentloop)
+                        ld l, a                                         
+                        add hl, hl                                      ; double it
+                        ld de, interruptdraw                            ; load the interrupt draw table
+                        add hl, de                                      ; point to the current draw
+                        ld a, (hl)                                      ; load the address in the table into hl
+                        inc hl
+                        ld h, (hl)
+                        ld l, a
+
+                        ld a, h
+                        cp 0
+                        jr z, InterruptDrawFinished
+
+                        jp (hl)                                         ; jump to it
+
+InterruptDrawFinished:
+
+                        ; call DrawAllSprites                             ; Draw the new sprites
 
 ;                         ld h, 0
 ;                         ld a, (currentloop)
@@ -146,6 +166,9 @@ Interrupt:
                         pop bc
                         pop af
                         ei                                              ; enable interrupts again
+                        ret
+
+SwitchState:
                         ret
 
 Code_Length:            EQU $-Code_Start + 1

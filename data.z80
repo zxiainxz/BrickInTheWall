@@ -45,6 +45,7 @@ spritetable:            block SPRITETABLE_SIZE * MAX_SPRITES
 currentloop:            db 0
 mainloops:              dw StartScreenLoop, MainGameLoop, GameOverLoop, IntroLoop, LevelCompleteLoop
 initialisers:           dw StartScreenInitialise, GameLoopInitialise, GameOverInitialise, IntroInitialise, LevelCompleteInitialise
+interruptdraw:          dw NULL, GameLoopDraw, NULL, NULL, NULL
 
 bonusadder              db 0
 score:                  byte "000000\0"
@@ -57,4 +58,10 @@ gameover_string:        byte "GAME OVER\0"
 level_string            byte "LEVEL \0\0\0"
 level_complete_string:  byte "LEVEL CLEAR\0"
 
+brickbuffer:            block 4096, 85                             ; 16 rows of 8px bricks. 32 bytes per row
+
+erasetable:             dw Erase0, Erase1, Erase2, Erase3, Erase4, Erase5
+                        dw Erase6, Erase7, Erase8, Erase9, Erase10, Erase11
+                        dw Erase12, Erase13, Erase14, NULL
+                        
                         include "anarchist-font.z80"

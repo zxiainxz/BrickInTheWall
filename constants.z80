@@ -1,3 +1,4 @@
+NULL                            EQU 0x0000
 Row_VCXZShift                   EQU 0xFEFE
 Row_GFDSA                       EQU 0xFDFE
 Row_TREWQ                       EQU 0xFBFE
