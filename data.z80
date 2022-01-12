@@ -9,13 +9,17 @@ Bat_Data:               db 255, 255, 160, 5, 160, 5, 195,195, 196, 35, 169, 85, 
 ; 16*rows*3
 RowColours:             db 8, 16, 24, 32, 48
 LevelBlockCount:        db 0
+
+previous_row:           block 16, 0
 LevelMap:               block 256
+LevelIterators:         dw NULL, NULL, NULL
 
 ; variables
 yballdir:               db 0
 xballdir:               db 0
 
-tmpx:                   db 0                                    ; Used by SpriteUtils to store x coord temporarily
+needsdisplay:           db 0
+tmpx:                   db 0                                    ; Used by SpriteUtils to store x coord temporarily. IS IT?
 
 lives:                  db INITIAL_LIVES
 
@@ -58,10 +62,4 @@ gameover_string:        byte "GAME OVER\0"
 level_string            byte "LEVEL \0\0\0"
 level_complete_string:  byte "LEVEL CLEAR\0"
 
-brickbuffer:            block 4096, 85                             ; 16 rows of 8px bricks. 32 bytes per row
-
-erasetable:             dw Erase0, Erase1, Erase2, Erase3, Erase4, Erase5
-                        dw Erase6, Erase7, Erase8, Erase9, Erase10, Erase11
-                        dw Erase12, Erase13, Erase14, NULL
-                        
                         include "anarchist-font.z80"

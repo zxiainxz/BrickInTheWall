@@ -1,6 +1,7 @@
 ; de - screen address
 ; a - ascii code
-DisplayChar:
+; output - ix: char sprite
+GetChar:
                         cp '9'+1
                         jr c, NumberChar
 
@@ -24,8 +25,6 @@ CharDone:
                         add ix, de
                         pop de
 
-                        call DrawSprite8x8
-
                         ret
 
 ; h, l: x, y
@@ -42,7 +41,8 @@ DisplayNextChar:
                         call scadd
                         
                         push bc
-                        call DisplayChar
+                        call GetChar
+                        call DrawSprite8x8
                         pop bc
                         
 MoveToNextChar:
@@ -53,6 +53,35 @@ MoveToNextChar:
                         jr DisplayNextChar
 
 DisplayStringDone:
+                        pop hl
+                        ret
+
+; h, l: x, y
+; bc: string address 0 terminated
+OverdrawString:
+                        push hl
+OverdrawNextChar:
+                        ld a, (bc)
+                        cp 0
+                        jr z, OverdrawStringDone
+
+                        cp 32
+                        jr z, OverdrawMoveToNextChar
+                        call scadd
+                        
+                        push bc
+                        call GetChar
+                        call OverdrawSprite8x8
+                        pop bc
+                        
+OverdrawMoveToNextChar:
+                        ld a, h
+                        add 8
+                        ld h, a
+                        inc bc
+                        jr OverdrawNextChar
+
+OverdrawStringDone:
                         pop hl
                         ret
 

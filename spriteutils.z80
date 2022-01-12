@@ -5,11 +5,8 @@
 DrawSprite8x8:
                         push bc
 
-                        ld a, l                         ; load y in a
                         ld b, 8                         ; Size of sprite
 DrawRow:
-                        ex af, af'                      ; store y coord in a`
-
                         push bc
 
                         ld b, (ix)                      ; sprite in b
@@ -44,11 +41,9 @@ DrawFirstPart:
                         ld (de), a                      ; put it on the screen
 
 LineDrawn:
-                        ex af, af'                      ; get ycoord from a'
-
                         pop bc
 
-                        call nextrow                    ; get the next row address, updating the row in a
+                        call NextRow2                    ; get the next row address
                         inc ix
 
                         djnz DrawRow
@@ -74,7 +69,25 @@ ShiftLeft1:
                         ld c, a
                         jr ShiftComplete
 
-; DrawSprite8x8 - Draws a 8x8 sprite on the screen at (xcoord, ycoord)
+; de - screen address
+; ix - sprite data
+OverdrawSprite8x8:
+                        push bc
+
+                        ld b, 8                         ; Size of sprite
+OverdrawRow:
+                        ld a, (ix)                      ; what's already on the screen
+                        ld (de), a                      ; put it on the screen
+
+                        call NextRow2                    ; get the next row address
+                        inc ix
+
+                        djnz OverdrawRow
+
+                        pop bc
+                        ret
+
+; DrawSprite16x8 - Draws a 8x8 sprite on the screen at (xcoord, ycoord)
 ; Inputs: ix - Start address of the sprite data
 ;         de - screen adderess
 ;          h - x coordinate
@@ -85,12 +98,10 @@ DrawSprite16x8:
 
                         ld a, h
                         ld (tmpx), a
-                        ld a, l
 
                         ld b, 8
-DrawRow16:
-                        ex af, af'
 
+DrawRow16:
                         push bc
 
                         ld b, (ix)
@@ -128,6 +139,7 @@ Draw16:
                         xor b
                         ld (de), a
 
+                        ld (de), a
                         inc e
 
                         ld a, (de)
@@ -143,7 +155,7 @@ Draw16:
 
                         pop bc
 
-                        call nextrow
+                        call NextRow2
                         
                         djnz DrawRow16
 
@@ -168,6 +180,37 @@ Shift16Left1:
                         ld b, h
                         ld h, a
                         jr Shift16Complete
+
+ClearSprite16x8:
+                        push bc
+                        push hl
+
+                        ld a, l
+                        ld b, 8
+
+                        ex af, af'
+                        xor a
+                        ex af, af'
+
+ClearNextRow:
+                        ex af, af'
+
+                        ld (de), a
+                        inc de
+                        ld (de), a
+
+                        dec de
+
+                         ex af, af'
+
+                        call NextRow2
+                        
+                        djnz ClearNextRow
+
+                        pop hl
+                        pop bc
+
+                        ret
 
 ; CheckCollision8v16: Check for a collision between an 8 sprite and a 16 sprite
 ; Inputs: a - one coord
@@ -241,11 +284,6 @@ CheckX6v16x6v8:
 DrawBallSprite:
                         ld ix, Ball_Data
                         call DrawSprite8x8
-                        ret
-
-DrawBrickSprite:
-                        ld ix, Brick_Data
-                        call DrawSprite16x8
                         ret
 
 ; da na na na na na na na batsprite!

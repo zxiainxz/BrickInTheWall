@@ -154,438 +154,386 @@ SetBrickColour:
                                                                      ; towards the number of blocks so skip djnz
 
 DisplayLevel:
-                        ld iy, LevelMap
-                        ld c, 0
+                        push af, bc, de, hl, ix, iy
 
-DisplayNextRow:
-                        ld b, 0
+                        exx
+                        ld bc, previous_row
+                        ld hl, LevelMap
+                        ld iy, LevelMap + 16
+                        exx
 
-DisplayNextBrick:
-                        ld a, (iy)
+                        ld ix, Brick_Data
+
+                        ld de, 0x4060                                   ; screen address for row 24
+                        ld hl, 0x4060
+
+                        call DrawBrickRow
+                        call DrawBrickRow
+                        call DrawBrickRow
+                        call DrawBrickRow
+
+                        call DrawBrickRow
+                        call DrawBrickRow
+                        call DrawBrickRow
+                        call DrawBrickRow
+
+                        call DrawBrickRow
+                        call DrawBrickRow
+                        call DrawBrickRow
+                        call DrawBrickRow
+
+                        call DrawBrickRow
+                        call DrawBrickRow
+                        call DrawBrickRow
+                        call DrawBrickRow
+
+                        call ColourLevel
+                        pop iy, ix, hl, de, bc, af
+                        ret
+
+DrawBrickRow:
+                        push ix
+                        call DrawRow0
+
+                        ld de, hl
+                        call NextRow2
+                        ld hl, de
+
+                        call DrawRow1to6
+                        ld de, hl
+                        call NextRow2
+                        ld hl, de
+
+                        call DrawRow1to6
+                        ld de, hl
+                        call NextRow2
+                        ld hl, de
+
+                        call DrawRow1to6
+                        ld de, hl
+                        call NextRow2
+                        ld hl, de
+
+                        call DrawRow1to6
+                        ld de, hl
+                        call NextRow2
+                        ld hl, de
+
+                        call DrawRow1to6
+                        ld de, hl
+                        call NextRow2
+                        ld hl, de
+
+                        call DrawRow1to6
+                        ld de, hl
+                        call NextRow2
+                        ld hl, de
+
+                        call DrawRow7
+
+                        ld de, hl
+                        call NextRow2
+                        ld hl, de
+
+                        pop ix
+                        ret
+
+DrawRow0:
+                        exx
+                        push bc, hl, iy
+                        ld iyl, 0
+                        exx
+
+                        ld b, 16
+DrawRow0Start:
+                        exx
+
+                        ld d, 0
+
+                        ld a, (bc)
                         cp 0
-                        jr z, MoveToNextBrick
+                        jr z, DrawRow01
+                        set 0, d
 
-                        call DrawBrick
+DrawRow01:
+                        ld a, (hl)
+                        cp 0
+                        jr z, DrawRow02
+                        set 1, d
 
-MoveToNextBrick:
-                        inc iy
-                        inc b
-                        ld a, b
-                        cp 16
-                        jr nz, DisplayNextBrick
+DrawRow02:
+                        inc bc
 
-                        inc c
-                        ld a, c
-                        cp 16
-                        jr nz, DisplayNextRow
+                        inc hl
+                        ld a, (hl)
+                        ld iyh, a
+                        dec hl
 
-                        ret
+                        ld a, d              
+                        exx
 
-; Draw Brick - draws the brick and any required border
-; inputs - a: brick colour
-;         iy: points to the brick in the LevelMap
-;          b: x in brick space
-;          c: y in brick space
-DrawBrick:
-                        call Brick2Pixel                                ; hl points to the pixel x,y
+                        ; a now has bits set
+                        ; 0 - nothing
+                        ; 1 - Draw 255
+                        ; 2, 3 - Draw sprite
+                        cp 2
+                        jr c, DrawRow03
 
-                        call pixelattradd                               ; Set the attributes
+                        ld a, (ix)
+                        ld (de), a
+                        inc de
+                        ld a, (ix + 1)
+                        ld (de), a
+                        inc de
+                        jr DrawRow09
+
+DrawRow03:
+                        cp 0
+                        jr z, DrawRow04
+
+                        ld a, 255
                         ld (de), a
                         inc de
                         ld (de), a
-                        call scadd                                      ; de points to the screen address
 
-                        call DrawBrickSprite
-
-                        call CheckAboveBrick
-                        call z, DrawAboveLine
-
-                        call CheckBelowBrick
-                        call z, DrawBelowLine
-
-                        call CheckLeftBrick
-                        call z, DrawRightLine
-
-                        call CheckRightBrick
-                        call z, DrawLeftLine
-
-                        ret
-
-; EraseBrick - Removes the brick and adjusts the border appropriately
-; inputs - iy: points to the brick in the LevelMap
-;           b: x in brick space
-;           c: y in brick space
-;           h: x in pixel space
-;           l: y in pixel space
-EraseBrick:
-                        call pixelattradd                       ; get the attr address for the brick
-
-                        ld a, 56                                ; 56 is white paper, black ink
-                        ld (de), a                              ; put it into the two adjacent character spaces
                         inc de
-                        ld (de), a
+                        jr DrawRow09
 
-                        ; call scadd                              ; get the screen address for the pixel
+DrawRow04:
+                        ld a, iyl
+                        cp 0
+                        jr z, DrawRow05
 
-                        ; push ix
-                        ; call DrawBrickSprite
-                        ; pop ix
-
-                        ex af, af'
+                        ld a, 128
+                        jr DrawRow06
+DrawRow05:
                         xor a
-                        ex af, af'
+DrawRow06:
+                        ld (de), a
+                        inc de
 
-                        call CheckAboveBrick
-                        call nz, SetAboveBrick
-
-                        call CheckBelowBrick
-                        call nz, SetBelowBrick
-
-                        call CheckLeftBrick
-                        call nz, SetLeftBrick
-
-                        call CheckRightBrick
-                        call nz, SetRightBrick
-
-                        ex af, af'
-                        push iy
-                        push hl
-
-                        ld iy, erasetable
-                        ld h, 0
-                        ld l, a
-                        add hl, hl
-
-                        ex hl, de
-                        add iy, de
-
-                        ld a, (iy)
-                        ld d, (iy + 1)
-                        ld e, a
-
-                        ld iy, de
-
-                        pop hl
-                        jp (iy)
-
-                        pop iy
-
-                        ex af, af'
-
-                        ; call CheckAboveBrick
-                        ; call z, EraseAboveLine
-                        ; call nz, DrawInnerAboveLine
-
-                        ; call CheckBelowBrick
-                        ; call z, EraseBelowLine
-                        ; call nz, DrawInnerBelowLine
-
-                        ; ld a, b
-                        ; cp 0
-                        ; call nz, MaybeCheckLeftBrick
-
-                        ; ld a, b
-                        ; cp 15
-                        ; call nz, MaybeCheckRightBrick
-
-                        ret
-
-MaybeCheckLeftBrick:
-                        call CheckLeftBrick
-                        call z, EraseLeftLine
-                        call nz, DrawInnerLeftLine
-                        ret
-
-MaybeCheckRightBrick:
-                        call CheckRightBrick
-                        call z, EraseRightLine
-                        call nz, DrawInnerRightLine
-                        ret
-
-SetAboveBrick:
-                        ex af, af'
-                        set 0, a
-                        ex af, af'
-
-                        ret
-
-SetBelowBrick:
-                        ex af, af'
-                        set 1, a
-                        ex af, af'
-
-                        ret
-
-SetLeftBrick:
-                        ex af, af'
-                        set 2, a
-                        ex af, af'
-
-                        ret
-
-SetRightBrick:
-                        ex af, af'
-                        set 3, a
-                        ex af, af'
-
-                        ret
-
-CheckAboveBrick:
-                        ld a, c
+                        ld a, iyh
                         cp 0
-                        ret z
+                        jr z, DrawRow07
 
-                        ld de, 16
-                        push hl
-
-                        push iy
-                        pop hl
-                        
-                        sbc hl, de
-
-                        push hl
-                        pop iy
-
-                        pop hl
-
-                        ld a, (iy)
-
-                        cp 0
-
-                        add iy, de
-                        ret
-                        
-DrawAboveLine:
-                        push af
-                        push hl
-
-                        dec l
-                        call scadd
-                        ld a, 255
+                        ld a, 1
+                        jr DrawRow08
+DrawRow07:
+                        xor a
+DrawRow08:
                         ld (de), a
                         inc de
-                        ld (de), a
 
-                        pop hl
-                        pop af
+DrawRow09:
+                        exx
+                        ld a, (hl)
+                        ld iyl, a
+                        inc hl
+                        exx
+                        djnz DrawRow0Start
+
+DrawRow0Finish:
+                        exx
+                        pop iy, hl, bc
+                        exx
+
                         ret
 
-DrawInnerAboveLine:
-                        push hl
+DrawRow1to6:
+                        inc ix
+                        inc ix
 
-                        call scadd
+                        ld b, 16
 
-                        ld a, 255
-                        ld (de), a
+                        exx
+                        push bc, hl, iy
+                        ld b, 0
+                        exx
 
-                        inc de
-                        ld (de), a
+DrawRow1to6Start:
+                        exx
 
-                        pop hl
-                        ret
-
-EraseAboveLine:
-                        push af
-                        push hl
-
-                        dec l
-                        call scadd
-                        ld a, 0
-                        ld (de), a
-                        inc de
-                        ld (de), a
-
-                        pop hl
-                        pop af
-                        ret
-
-CheckBelowBrick:
-                        ld a, c
-                        cp 15
-                        ret z
-
-                        ld de, 16
-
-                        add iy, de
-                        ld a, (iy)
-
-                        push hl
-
-                        push iy
-                        pop hl
-
-                        sbc hl, de
-
-                        push hl
-                        pop iy
-
-                        pop hl
-
-                        cp 0
-                        ret
-                        
-DrawBelowLine:
-                        push af
-                        push hl
-                        ld a, l
-                        add 8
-                        ld l, a
-                        call scadd
-                        ld a, 255
-                        ld (de), a
-                        inc de
-                        ld (de), a
-
-                        pop hl
-                        pop af
-                        ret
-
-DrawInnerBelowLine:
-                        push hl
-
-                        ld a, l
-                        add 7
-                        ld l, a
-                        call scadd
-
-                        ld a, 255
-                        ld (de), a
-
-                        inc de
-                        ld (de), a
-
-                        pop hl
-                        ret
-
-EraseBelowLine:
-                        push af
-                        push hl
-
-                        ld a, l
-                        add 8
-                        ld l, a
-                        call scadd
-
-                        ld a, 0
-                        ld (de), a
-                        inc de
-                        ld (de), a
-
-                        pop hl
-                        pop af
-                        ret
-
-ClearZAndReturn:
-                        or 1                                    ; Clear z
-                        ret
-
-CheckLeftBrick:
+                        ld d, 0
                         ld a, b
                         cp 0
-                        jr z, ClearZAndReturn
+                        jr z, DrawRow1to62
+                        set 2, d
+DrawRow1to62:
+                        ld a, (hl)
+                        ld b, a
+                        cp 0
+                        inc hl
+                        jr z, DrawRow1to63
+                        set 1, d
+                        jr DrawRow1to64
+DrawRow1to63:
+                        ld a, (hl)
+                        cp 0
+                        jr z, DrawRow1to64
+                        set 0, d
+DrawRow1to64:
+                        ld a, d
 
-                        dec iy
+                        exx
+
+                        bit 1, a                                ; Check if drawing sprite
+                        jr z, DrawRow1to61                     ; No, skip to empty
+
+                        ld a, (ix)
+                        ld (de), a
+
+                        inc de
+                        ld a, (ix + 1)
+                        ld (de), a
+                        jr DrawRow1to65                         ; Move to next block
+
+DrawRow1to61:
+                        bit 2, a                                ; Check if previous block present
+                        jr z, DrawRow1to66                     ; No, draw empty space
+                        ex af, af'
+
+                        ld a, 128                               ; draw left line
+                        ld (de), a
+
+                        ex af, af'
+                        jr DrawRow1to68                         ; skip over empty left
+
+DrawRow1to66:
+                        ex af, af'
+
+                        xor a
+                        ld (de), a
+
+                        ex af, af'
+
+DrawRow1to68:                        
+                        inc de
+
+                        bit 0, a
+                        jr z, DrawRow1to67
+                        ld a, 1
+                        ld (de), a
+                        jr DrawRow1to65
+
+DrawRow1to67:
+                        xor a
+                        ld (de), a
+
+DrawRow1to65:
+                        inc de
+                        djnz DrawRow1to6Start
+
+                        exx
+                        pop iy, hl, bc
+                        exx
+
+                        ret
+
+DrawRow7:
+                        exx
+                        ld d, 0
+                        exx
+
+                        inc ix
+                        inc ix
+
+                        ld b, 16
+
+DrawRow7Start:
+                        exx
+
+                        ld a, d
+                        and 64
+                        ld d, a
+
                         ld a, (iy)
                         cp 0
+                        jr z, DrawRow71
+                        set 0, d
+
+DrawRow71:
+                        ld a, (hl)
+                        cp 0
+                        jr z, DrawRow72
+                        set 1, d
+
+DrawRow72:
+                        inc hl
+                        ld a, (hl)
+                        cp 0
+                        jr z, DrawRow721
+                        set 6, d
+DrawRow721:
+                        dec hl
 
                         inc iy
 
-                        ret
-                        
-DrawRightLine:
-                        push hl
+                        ld a, d              
+                        exx
 
-                        dec h
-                        call scadd
+                        ; a now has bits set
+                        ; 0 - nothing
+                        ; 1 - Draw 255
+                        ; 2, 3 - Draw sprite
+                        cp 2
+                        jr c, DrawRow73
 
-                        ld a, 1
-                        call DrawVerticalLine8
-                        pop hl
+                        ld a, (ix)
+                        ld (de), a
+                        inc de
+                        ld a, (ix + 1)
+                        ld (de), a
 
-                        ret
+                        inc de
+                        jr DrawRow75
 
-DrawInnerRightLine:
-                        push hl
-
-                        ld a, h
-                        add 8
-                        ld h, a
-
-                        call scadd
-
-                        ld a, 1
-                        call DrawVerticalLine8
-                        pop hl
-
-                        ret
-
-EraseRightLine:
-                        push af
-                        push hl
-
-                        ld a, h
-                        add 16
-                        ld h, a
-                        call scadd
-
-                        ld a, 128
-                        call EraseVerticalLine8
-
-                        pop hl
-                        pop af
-                        ret
-
-CheckRightBrick:
-                        ld a, b
-                        cp 15
-                        jr z, ClearZAndReturn
-
-                        inc iy
-                        ld a, (iy)
+DrawRow73:
                         cp 0
+                        jr nz, DrawRow74
 
-                        dec iy
+                        inc de
+                        inc de
+                        jr DrawRow75
 
-                        ret
-                        
-DrawLeftLine:
-                        push hl
+DrawRow74:
+                        ld a, 255
+                        ld (de), a
+                        inc de
+                        ld (de), a
 
-                        ld a, h
-                        add 16
-                        ld h, a
+                        inc de
+DrawRow75:
+                        exx
+                        ld a, (hl)
+                        cp 0
+                        jr z, DrawRow76
+                        set 7, d
+DrawRow76:
+                        inc hl
+                        exx
+                        djnz DrawRow7Start
 
-                        call scadd
-
-                        ld a, 128
-                        call DrawVerticalLine8
-                        pop hl
-
-                        ret
-
-DrawInnerLeftLine:
-                        push hl
-
-                        call scadd
-
-                        ld a, 128
-                        call DrawVerticalLine8
-                        pop hl
-
+DrawRow7Finish:
                         ret
 
-EraseLeftLine:
-                        push af
-                        push hl
+ColourLevel:
+                        ld hl, LevelMap
+                        ld de, 0x5860
 
-                        dec h
-                        call scadd
+                        ld bc, 255
+ColourNextBlock:
+                        ld a, (hl)
+                        cp 0
+                        jr nz, DontChangeColour
+                        ld a, 56
+DontChangeColour:
+                        ld (de), a
+                        inc de
+                        ld (de), a
+                        inc de
+                        inc hl
 
-                        ld a, 1
-                        call EraseVerticalLine8
-
-                        pop hl
-                        pop af
+                        djnz ColourNextBlock
                         ret
 
 ; CheckBrickCollision - Check if the ball has collided with any of the bricks
@@ -738,7 +686,8 @@ RemoveBrick
                         xor a
                         ld (iy), a                              ; erase brick
 
-                        call EraseBrick
+                        ld a, 1
+                        ld (needsdisplay), a
 
                         pop hl
 
@@ -753,293 +702,3 @@ RemoveBrick
                         ld (LevelBlockCount), a
 
                         ret
-
-EraseBorderDone:
-                        ret
-
-Erase0:
-                        ; Erase all borders
-                        ; No Inner border
-
-                        dec l
-                        ex af, af'
-                        ld a, l                                 ; Load y into a' for nextrow
-                        ex af, af'
-
-                        dec l                                   ; previous row to delete the border
-                        call scadd                              ; screen address
-
-                        xor a                                   ; a to 0
-
-                        ld (de), a                              ; erase the top border
-                        inc de
-                        ld (de), a
-                        dec de
-                        
-                        ld b, 8
-E0NextRow:
-                        ex af, af'
-                        call nextrow                            ; next row
-                        ex af, af'
-
-                        dec de                                  ; erase left border
-                        ld a, (de)
-                        ld c, 1
-                        xor c
-                        ld (de), a
-
-                        xor a                                   ; erase the brick
-                        inc de
-                        ld (de), a
-                        inc de
-                        ld (de), a
-                        inc de
-
-                        ld a, (de)                              ; erase right border
-                        ld c, 128
-                        xor c
-                        ld (de), a
-
-                        dec de
-                        dec de
-
-                        djnz E0NextRow
-
-                        ex af, af'
-                        call nextrow
-                        ex af, af'
-
-                        xor a                                   ; erase bottom border
-                        ld (de), a
-                        inc de
-                        ld (de), a
-
-                        jp EraseBorderDone
-
-
-Erase1:
-                        ; Erase left, right, bottom borders
-                        ; Draw top line
-                        ex af, af'
-                        ld a, l
-                        ex af, af'
-                        
-                        call scadd
-
-                        dec de
-                        ld a, (de)
-                        ld c, 1
-                        xor c
-                        ld (de), a
-
-                        inc de
-                        ld a, 255
-                        ld (de), a
-                        inc de
-                        ld (de), a
-                        inc de
-
-                        ld a, (de)
-                        ld c, 128
-                        xor c
-                        ld (de), a
-                        dec de
-                        dec de
-                        dec de
-
-                        ld b, 7
-E1NextRow:
-                        dec de                                  ; erase left border
-                        ld a, (de)
-                        ld c, 1
-                        xor c
-                        ld (de), a
-
-                        xor a
-                        inc de                                  ; erase brick
-                        ld (de), a              
-                        inc de
-                        ld (de), a
-
-                        inc de                                  ; erase right border
-                        ld a, (de)
-                        ld c, 128
-                        xor c
-                        ld (de), a
-
-                        dec de
-                        dec de
-
-                        ex af, af'
-                        call nextrow
-                        ex af, af'
-
-                        djnz E1NextRow
-
-                        xor a                                   ; erase bottom border
-                        ld (de), a
-                        inc de
-                        ld (de), a
-
-                        jp EraseBorderDone
-
-Erase2:
-                        ; Erase left, right, top borders
-                        ; Draw bottom line
-                        dec l
-                        ex af, af'
-                        ld a, l
-                        ex af, af'
-                        
-                        call scadd
-
-                        ld a, 255
-                        ld (de), a
-                        inc a
-                        ld (de), a
-                        dec de
-
-                        ex af, af'
-                        call nextrow
-                        ex af, af'
-
-                        ld b, 7
-E2NextRow:
-                        dec de                                  ; erase left border
-                        ld a, (de)
-                        ld c, 1
-                        xor c
-                        ld (de), a
-
-                        xor a
-                        inc de                                  ; erase brick
-                        ld (de), a              
-                        inc de
-                        ld (de), a
-
-                        inc de                                  ; erase right border
-                        ld a, (de)
-                        ld c, 128
-                        xor c
-                        ld (de), a
-
-                        dec de
-                        dec de
-
-                        ex af, af'
-                        call nextrow
-                        ex af, af'
-
-                        djnz E2NextRow
-
-                        ld a, 255
-                        ld (de), a
-                        inc de
-                        ld (de), a
-
-                        jp EraseBorderDone
-
-Erase3:
-                        ; erase l&r
-                        ; draw t&b
-                        jp EraseBorderDone
-
-Erase4:
-                        ; erase t, b, r
-                        ; draw l
-                        jp EraseBorderDone
-
-Erase5:
-                        ; erase b, r
-                        ; draw l, r
-                        jp EraseBorderDone
-
-Erase6:
-                        ; erase t, r
-                        ; draw l, b
-                        jp EraseBorderDone
-
-Erase7:
-                        ; erase r
-                        ; draw t, l, b
-                        jp EraseBorderDone
-
-Erase8:
-                        ; erase t, l, b
-                        ; draw r
-                        jp EraseBorderDone
-
-Erase9:
-                        ; erase l, b
-                        ; draw t, r
-                        jp EraseBorderDone
-
-Erase10:
-                        ; erase l, t
-                        ; draw r, b
-                        jp EraseBorderDone
-
-Erase11:
-                        ; erase l
-                        ; draw t, r, b
-                        jp EraseBorderDone
-
-Erase12:
-                        ; erase t, b
-                        ; draw l, r
-                        jp EraseBorderDone
-
-Erase13:
-                        ; erase b
-                        ; draw l, t , r
-
-                        ex af, af'
-                        ld a, l
-                        ex af, af'
-                        
-                        call scadd
-
-                        ld a, 127
-                        ld (de), a
-                        inc de
-
-                        ld a, 254
-                        ld (de), a
-                        dec de
-
-                        ex af, af'
-                        call nextrow
-                        ex af, af'
-
-                        ld b, 7
-E13NextRow:
-                        ld a, 128
-                        ld (de), a
-
-                        ld a, 1
-                        inc de                                  ; erase brick
-                        ld (de), a              
-
-                        dec de
-
-                        ex af, af'
-                        call nextrow
-                        ex af, af'
-
-                        djnz E13NextRow
-
-                        ld a, 0
-                        ld (de), a
-                        inc de
-                        ld (de), a
-
-                        jp EraseBorderDone
-
-Erase14:
-                        ; erase t
-                        ; draw l, b, r
-                        jp EraseBorderDone
-
-Erase15:
-                        ; Empty by design
-                        jp EraseBorderDone

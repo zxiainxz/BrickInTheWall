@@ -82,6 +82,29 @@ nextchar:
                         add hl, de              ; subtract 1760 from screen address
                         jr nextrowdone
 
+; NextRow2: get the next row quicker than nextrow
+; Inputs:  de - current screen address
+; Outputs: de - new screen address
+; Trashes: af
+NextRow2:                                                       ; Better than nextrow
+                        inc d
+                        ld a, d
+                        and 0x07
+                        jr nz, NextRow2Done
+
+                        ld a, e
+                        add a, 32
+                        ld e, a
+                        jr c, NextRow2Done
+
+                        ld a, d
+                        sub 8
+                        ld d, a
+                        
+NextRow2Done:
+                        ret
+
+
 ; atadd - get the attribute address
 ; inputs: hl - x, y coordinates in character space
 ; outputs: de - attribute address

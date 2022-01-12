@@ -21,10 +21,10 @@ GameLoopInitialise:
                         jp InitialiseFinished
 
 MainGameLoop:
-                        ld b, 1                                         ; number of halt instructions
+                        ; ld b, 1                                         ; number of halt instructions
 Wait_Timer:
                         halt                                            ; Wait
-                        djnz Wait_Timer
+                        ; djnz Wait_Timer
 
                         call Move_BallY
                         call Move_BallX
@@ -53,6 +53,12 @@ Wait_Timer:
                         jr MainGameLoop
 
 GameLoopDraw:
+                        ld a, (needsdisplay)
+                        cp 1
+                        call z, DisplayLevel
+                        ld a, 0
+                        ld (needsdisplay), a
+
                         jp InterruptDrawFinished
 
 LevelComplete:
@@ -81,7 +87,10 @@ StartLevel:
                         call FadeScreenToWhite
                         call ResetLevel
                         call LoadLevel
-                        call DisplayLevel
+
+                        ld a, 1
+                        ld (needsdisplay), a
+
                         ret
 
 ResetBallBat:

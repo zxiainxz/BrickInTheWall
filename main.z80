@@ -92,25 +92,7 @@ Interrupt:
                         push hl
                         push iy
 
-;                         ld h, 0
-;                         ld a, (currentloop)
-;                         ld l, a                                         
-;                         add hl, hl                                      ; double it
-;                         ld de, interruptenter                           ; load the initialisers table
-;                         add hl, de                                      ; point to the current loop initialiser
-;                         ld a, (hl)                                      ; load the address in the table into hl
-;                         inc hl
-;                         ld h, (hl)
-;                         ld l, a
-
-;                         ld a, h
-;                         cp 0
-;                         jr z, InterruptEntered
-
-;                         jp (hl)                                         ; jump to it
-
-; InterruptEntered:
-                        ; call EraseAllSprites                            ; Remove the old sprites
+                        call EraseAllSprites                            ; Remove the old sprites
                         
                                                                         ; FIXME: Might be nice to cache this for speed
                         ld h, 0
@@ -132,26 +114,7 @@ Interrupt:
 
 InterruptDrawFinished:
 
-                        ; call DrawAllSprites                             ; Draw the new sprites
-
-;                         ld h, 0
-;                         ld a, (currentloop)
-;                         ld l, a                                         
-;                         add hl, hl                                      ; double it
-;                         ld de, interruptexit                            ; load the initialisers table
-;                         add hl, de                                      ; point to the current loop initialiser
-;                         ld a, (hl)                                      ; load the address in the table into hl
-;                         inc hl
-;                         ld h, (hl)
-;                         ld l, a
-
-;                         ld a, h
-;                         cp 0
-;                         jr z, InterruptExited
-
-;                         jp (hl)                                         ; jump to it
-
-; InterruptExited:
+                        call DrawAllSprites                             ; Draw the new sprites
 
                         pop iy                                          ; pop it all back off the stack
                         pop hl

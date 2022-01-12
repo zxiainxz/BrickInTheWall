@@ -65,9 +65,9 @@ DrawScore:
                         push hl
                         push bc
 
-                        ld hl, 0x2d00
+                        ld hl, 0x3000
                         ld bc, score
-                        call DisplayString
+                        call OverdrawString
 
                         pop bc
                         pop hl
