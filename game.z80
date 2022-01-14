@@ -54,9 +54,9 @@ Wait_Timer:
 
 GameLoopDraw:
                         ld a, (needsdisplay)
-                        cp 1
-                        call z, DisplayLevel
-                        ld a, 0
+                        cp 0
+                        call nz, UpdateLevel
+                        xor a
                         ld (needsdisplay), a
 
                         jp InterruptDrawFinished
@@ -88,8 +88,7 @@ StartLevel:
                         call ResetLevel
                         call LoadLevel
 
-                        ld a, 1
-                        ld (needsdisplay), a
+                        call DisplayLevel
 
                         ret
 
