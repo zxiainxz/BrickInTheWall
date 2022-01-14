@@ -204,24 +204,19 @@ UpdateLevel:
                         ld l, a
                         call Pixel2LevelMap
 
-                        call ClearWholeRow
-
                         call DrawUpperDividerRow
                         call NextRow2
                         jr UpdateLevel1
+
 UpdateTopLine:
                         ld hl, LevelMap
                         call DrawHorizontalMaskRow
-                        ld iy, Brick_Data
                         ld de, 0x4080                                   ; 0, 32
 
 UpdateLevel1:
                         ld iy, Brick_Data
                         call DrawMaskedRow
 
-                        ; call NextRow2
-
-                        call ClearWholeRow
                         call DrawLowerDividerRow
 
                         call ColourLevel
@@ -229,49 +224,41 @@ UpdateLevel1:
 
 DrawMaskedRow:
                         push iy
-                        call ClearWholeRow
                         call DrawLowerDividerRow
                         inc iy
                         inc iy
                         inc d
 
-                        call ClearWholeRow
                         call DrawHorizontalRow
                         inc iy
                         inc iy
 
                         inc d
-                        call ClearWholeRow
                         call DrawHorizontalRow
                         inc iy
                         inc iy
 
                         inc d
-                        call ClearWholeRow
                         call DrawHorizontalRow
                         inc iy
                         inc iy
 
                         inc d
-                        call ClearWholeRow
                         call DrawHorizontalRow
                         inc iy
                         inc iy
 
                         inc d
-                        call ClearWholeRow
                         call DrawHorizontalRow
                         inc iy
                         inc iy
 
                         inc d
-                        call ClearWholeRow
                         call DrawHorizontalRow
                         inc iy
                         inc iy
 
                         inc d
-                        call ClearWholeRow
                         call DrawUpperDividerRow
                         call NextRow2
                         pop iy
@@ -307,41 +294,36 @@ DrawHorizontalMaskRowNext:
                         ret
 
 DrawHorizontalRow:
-                                                                ; draw mask first
-                        push de, hl                             ; store de, hl because we mess around with them
+                        push de, hl
 
-                        ld b, 16                                ; repeat for 16 bricks
-                                                                ; FIXME: Special case first/last bricks
+                        ld b, 16
+
 DrawHorizontalRowStart:
-                        ld ix, hl                               ; make bc point to the next brick along
+                        ld ix, hl
 
-                        ld a, (hl)                              ; Check current brick
-                        cp 0                                    ; empty?
-                        jr nz, DrawHorizontalRow1               ; not empty, jump
+                        ld a, (hl)
+                        cp 0
+                        jr nz, DrawHorizontalRow1
 
                         ld a, (ix - 1)
                         cp 0
-                        jr nz, DrawHorizontalRow12
+                        jr z, DrawHorizontalRow2
 
-                        xor a
+                        ld a, 128
+DrawHorizontalRow2:
                         ld (de), a
-                        inc de                                  ; empty
-                        
-                        ld (de), a
-                        jr DrawHorizontalRow13
-
-DrawHorizontalRow12:
-                        inc de
-DrawHorizontalRow13:
-                        ld a, (ix + 1)                              ; Check next brick
-                        cp 0                                    ; empty?
-                        jr z, DrawHorizontalRow15               ; empty, move to next brick
-
-                        ld a, 1                                 ; current brick empty, next brick not
-                        ld (de), a                              ; so draw left mask
                         inc de
 
-                        jr DrawHorizontalRow2                   ; move to next brick
+                        ld a, (ix + 1)
+                        cp 0
+                        jr z, DrawHorizontalRow3
+
+                        ld a, 1
+DrawHorizontalRow3:
+                        ld (de), a
+                        inc de
+
+                        jr DrawHorizontalRowNext
 
 DrawHorizontalRow1:
                         ld a, (iy)
@@ -352,20 +334,8 @@ DrawHorizontalRow1:
                         ld (de), a
                         inc de
 
-                        ld a, (ix + 1)                              ; check next brick
-                        cp 0                                    ; empty?
-                        jr nz, DrawHorizontalRow2               ; not empty, not need to draw
-
-                        ld a, 128                               ; next brick empty, draw right mask
-                        ld (de), a
-                        jr DrawHorizontalRow2
-
-DrawHorizontalRow15:
-                        inc de
-
-DrawHorizontalRow2:
+DrawHorizontalRowNext:
                         inc hl
-
                         djnz DrawHorizontalRowStart
 
                         pop hl, de
@@ -376,61 +346,61 @@ DrawUpperDividerRow:
 
                         ld b, 16
 
-DrawDividerRowStart:
+DrawUpperDividerRowStart:
                         ld ix, hl
 
-                        ld a, (hl)                              ; check current brick
+                        ld a, (hl)                              ; Check current brick
                         cp 0
-                        jr nz, DrawDividerRow1                  ; not empty, jump
+                        jr nz, DrawUpperDividerRow1             ; Not empty, jump
 
-                        ld a, (ix + 16)                         ; Empty, check next row of bricks
+                        ld a, (ix + 16)
                         cp 0
-                        jr z, DrawDividerRow2                   ; next row empty, jump
+                        jr z, DrawUpperDividerRow2
 
-                        ld a, 255                               ; draw top of mask for next row
+                        ld a, 255
                         ld (de), a
                         inc de
                         ld (de), a
-                        inc de                                  ; increase de to next brick
+                        inc de
 
-                        jr DrawDividerRowNext                   ; move to next brick
+                        jr DrawUpperDividerRowNext
 
-DrawDividerRow2:                                                ; Current brick empty, next row empty
-                        ld a, (ix + 1)                          ; Check next brick
+DrawUpperDividerRow2:
+                        ld a, (ix - 1)
                         cp 0
-                        jr z, DrawDividerRow3                   ; Empty, jump
+                        jr z, DrawUpperDividerRow21
 
-                        inc de                                  ; Next brick not empty, draw left mask edge
+                        ld a, 128
+DrawUpperDividerRow21:
+                        ld (de), a
+                        inc de
+
+                        ld a, (ix + 1)
+                        cp 0
+                        jr z, DrawUpperDividerRow22
 
                         ld a, 1
+
+DrawUpperDividerRow22:
                         ld (de), a
-                        inc de                                  ; de to next brick
-
-                        jr DrawDividerRowNext                   ; move to next brick
-
-DrawDividerRow3:
                         inc de
-                        inc de
-                        jr DrawDividerRowNext
 
-DrawDividerRow1:                                                ; Current brick not empty
+                        jr DrawUpperDividerRowNext
+
+DrawUpperDividerRow1:
                         ld a, (iy)
                         ld (de), a
                         inc de
+
                         ld a, (iy + 1)
                         ld (de), a
                         inc de
 
-                        ld a, (ix + 1)                          ; Check next brick
-                        cp 0
-                        jr nz, DrawDividerRowNext               ; Not empty, jump
-
-                        ld a, 128                               ; draw right mask
                         ld (de), a
 
-DrawDividerRowNext:
+DrawUpperDividerRowNext:
                         inc hl
-                        djnz DrawDividerRowStart
+                        djnz DrawUpperDividerRowStart
 
                         pop de
                         ret
@@ -460,21 +430,25 @@ DrawLowerDividerRowStart:
                         jr DrawLowerDividerRowNext
 
 DrawLowerDividerRow2:
-                        ld a, (ix + 1)
+                        ld a, (ix - 1)
                         cp 0
-                        jr z, DrawLowerDividerRow3
+                        jr z, DrawLowerDividerRow21
 
-                        inc de
-
-                        ld a, 1
+                        ld a, 128
+DrawLowerDividerRow21:
                         ld (de), a
                         inc de
 
-                        jr DrawLowerDividerRowNext
+                        ld a, (ix + 1)
+                        cp 0
+                        jr z, DrawLowerDividerRow22
 
-DrawLowerDividerRow3:
+                        ld a, 1
+
+DrawLowerDividerRow22:
+                        ld (de), a
                         inc de
-                        inc de
+
                         jr DrawLowerDividerRowNext
 
 DrawLowerDividerRow1:
@@ -486,11 +460,6 @@ DrawLowerDividerRow1:
                         ld (de), a
                         inc de
 
-                        ld a, (ix + 1)
-                        cp 0
-                        jr nz, DrawLowerDividerRowNext
-
-                        ld a, 128
                         ld (de), a
 
 DrawLowerDividerRowNext:
@@ -689,7 +658,6 @@ RemoveBrick
                         ret
 
 ClearWholeRow:
-                        ret
                         push de
                         xor a
                         ld (de), a
