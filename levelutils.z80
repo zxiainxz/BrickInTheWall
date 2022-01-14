@@ -162,11 +162,11 @@ DisplayLevel:
                         ld hl, LevelMap
                         ld iy, Brick_Data
 
-                        call DrawHorizontalMaskRow
+                        call DrawHorizontalMaskRow                  ; draw the top of the outline
 
                         ld de, 0x4080                                   ; 0, 32
 
-                        call DrawMaskedRow
+                        call DrawMaskedRow                          ; draw 15 rows
                         call DrawMaskedRow
                         call DrawMaskedRow
                         call DrawMaskedRow
@@ -188,53 +188,51 @@ DisplayLevel:
                         call ColourLevel
                         ret
 
+; Update a level row. Need to draw the 8 pixels of the row and one above, and one below
+; Inputs: - a the pixel of the brick row to be updated - 1
+; Trashes: af, hl, de, iy
 UpdateLevel:
                         ld h, 0
                         ld l, a
 
-                        call scadd
+                        call scadd                      ; put screen address into de
 
-                        ld a, l
+                        ld a, l                         ; Check if this is the row before the first brick
                         cp 31
-                        jr z, UpdateTopLine
+                        jr z, UpdateTopLine             ; if it is, jump
 
-                        ld iy, Brick_Data + 14
+                        ld iy, Brick_Data + 14          ; the line before the row needs the 7th row of the brick sprite
 
-                        sub 7
+                        sub 7                           ; move to the y pixel of the previous row
                         ld l, a
-                        call Pixel2LevelMap
+                        call Pixel2LevelMap             ; hl points to the first brick of the previous row
 
-                        call DrawUpperDividerRow
-                        call NextRow2
+                        call DrawUpperDividerRow        ; draw the bottom row of the brick
+                        call NextRow2                   ; move to next character row
                         jr UpdateLevel1
 
 UpdateTopLine:
-                        ld hl, LevelMap
-                        call DrawHorizontalMaskRow
-                        ld de, 0x4080                                   ; 0, 32
+                        ld hl, LevelMap                 ; point hl to start of levelmap
+                        call DrawHorizontalMaskRow      ; draw the top border
+                        ld de, 0x4080                   ; 0, 32
 
 UpdateLevel1:
-                        ld iy, Brick_Data
-                        call DrawMaskedRow
+                        ld iy, Brick_Data               ; point iy at start of brick data
+                        call DrawMaskedRow              ; draw a whole row
 
-                        call DrawLowerDividerRow
+                        call DrawLowerDividerRow        ; draw the top line of the next row
 
-                        call ColourLevel
+                        call ColourLevel                ; fill in the colour
                         ret
 
 DrawMaskedRow:
                         push iy
-                        call DrawLowerDividerRow
+                        call DrawLowerDividerRow        ; draw the first row of the brick
+                        inc iy                          ; move to next row of sprite data
                         inc iy
-                        inc iy
-                        inc d
+                        inc d                           ; move to the next pixel row
 
-                        call DrawHorizontalRow
-                        inc iy
-                        inc iy
-
-                        inc d
-                        call DrawHorizontalRow
+                        call DrawHorizontalRow          ; draw the next 6 rows
                         inc iy
                         inc iy
 
@@ -259,92 +257,97 @@ DrawMaskedRow:
                         inc iy
 
                         inc d
-                        call DrawUpperDividerRow
-                        call NextRow2
+                        call DrawHorizontalRow
+                        inc iy
+                        inc iy
+
+                        inc d
+                        call DrawUpperDividerRow            ; draw the bottom line
+                        call NextRow2                       ; move de to the next char row
                         pop iy
 
                         ret
 
+; Draw the top line of the border
 DrawHorizontalMaskRow:
                         push de, hl
 
-                        ld b, 16
+                        ld b, 16                                ; draw 16 bricks in the row
 
 DrawHorizontalMaskRowStart:
-                        ld a, (hl)
+                        ld a, (hl)                              ; check the current brick
                         cp 0
-                        jr z, DrawHorizontalMaskRow1
+                        jr z, DrawHorizontalMaskRow1            ; empty, jump to draw empty
 
-                        ld a, 255
-                        jr DrawHorizontalMaskRow2
+                        ld a, 255                               ; not empty, fill with 255
+
 DrawHorizontalMaskRow1:
-                        xor a
-DrawHorizontalMaskRow2:
-
-                        ld (de), a
+                        ld (de), a                              ; draw next two chars
                         inc de
                         ld (de), a
                         inc de
 
 DrawHorizontalMaskRowNext:
-                        inc hl
+                        inc hl                                  ; move to next brick
                         djnz DrawHorizontalMaskRowStart
 
                         pop hl, de
                         ret
 
+; Draw a middle line of the brick
 DrawHorizontalRow:
                         push de, hl
 
-                        ld b, 16
+                        ld b, 16                                ; draw 16 bricks
 
 DrawHorizontalRowStart:
-                        ld ix, hl
+                        ld ix, hl                               ; point ix to hl
 
-                        ld a, (hl)
+                        ld a, (hl)                              ; check current brick
                         cp 0
-                        jr nz, DrawHorizontalRow1
+                        jr nz, DrawHorizontalRow1               ; not empty, jump
 
-                        ld a, (ix - 1)
+                        ld a, (ix - 1)                          ; check previous brick
                         cp 0
-                        jr z, DrawHorizontalRow2
+                        jr z, DrawHorizontalRow2                ; previous brick is empty, skip drawing border
 
-                        ld a, 128
+                        ld a, 128                               ; not empty, draw the right border of the previous brick 
 DrawHorizontalRow2:
-                        ld (de), a
+                        ld (de), a                              ; draw first half of space
                         inc de
 
-                        ld a, (ix + 1)
+                        ld a, (ix + 1)                          ; check the next brick
                         cp 0
-                        jr z, DrawHorizontalRow3
+                        jr z, DrawHorizontalRow3                ; empty, skip the border
 
-                        ld a, 1
+                        ld a, 1                                 ; not empty, draw the left border of the next brick
 DrawHorizontalRow3:
-                        ld (de), a
+                        ld (de), a                              ; draw second half of space
                         inc de
 
-                        jr DrawHorizontalRowNext
+                        jr DrawHorizontalRowNext                ; go to next brick
 
 DrawHorizontalRow1:
-                        ld a, (iy)
+                        ld a, (iy)                              ; current brick not empty, draw the brick sprite
                         ld (de), a
-                        inc de                                  ; current brick not empty
+                        inc de
 
                         ld a, (iy + 1)
                         ld (de), a
                         inc de
 
 DrawHorizontalRowNext:
-                        inc hl
+                        inc hl                                  ; next brick
                         djnz DrawHorizontalRowStart
 
                         pop hl, de
                         ret
 
+; Draw the bottom of the brick. Don't ask why it's called upper divider FIXME: RENAME IT
 DrawUpperDividerRow:
                         push de
 
-                        ld b, 16
+                        ld b, 16                                ; Draw 16 bricks
 
 DrawUpperDividerRowStart:
                         ld ix, hl
@@ -353,42 +356,42 @@ DrawUpperDividerRowStart:
                         cp 0
                         jr nz, DrawUpperDividerRow1             ; Not empty, jump
 
-                        ld a, (ix + 16)
+                        ld a, (ix + 16)                         ; Check the next row
                         cp 0
-                        jr z, DrawUpperDividerRow2
+                        jr z, DrawUpperDividerRow2              ; empty, so jump to draw the space
 
-                        ld a, 255
+                        ld a, 255                               ; draw the upper border of the next row
                         ld (de), a
                         inc de
                         ld (de), a
                         inc de
 
-                        jr DrawUpperDividerRowNext
+                        jr DrawUpperDividerRowNext              ; Next brick
 
 DrawUpperDividerRow2:
-                        ld a, (ix - 1)
+                        ld a, (ix - 1)                          ; current brick is empty, does it need a border
                         cp 0
-                        jr z, DrawUpperDividerRow21
+                        jr z, DrawUpperDividerRow21             ; previous is empty, skip drawing border
 
-                        ld a, 128
+                        ld a, 128                               ; ight border of previous brick
 DrawUpperDividerRow21:
-                        ld (de), a
+                        ld (de), a                              ; draw first half of brick space
                         inc de
 
-                        ld a, (ix + 1)
+                        ld a, (ix + 1)                          ; check next brick
                         cp 0
-                        jr z, DrawUpperDividerRow22
+                        jr z, DrawUpperDividerRow22             ; next is empty, skip drawing border
 
-                        ld a, 1
+                        ld a, 1                                 ; left border of next brick
 
 DrawUpperDividerRow22:
-                        ld (de), a
+                        ld (de), a                              ; draw second half of the brick
                         inc de
 
-                        jr DrawUpperDividerRowNext
+                        jr DrawUpperDividerRowNext              ; next brick
 
 DrawUpperDividerRow1:
-                        ld a, (iy)
+                        ld a, (iy)                              ; current brick not empty, so draw sprite
                         ld (de), a
                         inc de
 
@@ -396,19 +399,18 @@ DrawUpperDividerRow1:
                         ld (de), a
                         inc de
 
-                        ld (de), a
-
-DrawUpperDividerRowNext:
+DrawUpperDividerRowNext:                                        
                         inc hl
-                        djnz DrawUpperDividerRowStart
+                        djnz DrawUpperDividerRowStart           ; move to the next brick
 
                         pop de
                         ret
 
+; Draw the top line of the row // FIXME: Rename it to something less stupid
 DrawLowerDividerRow:
                         push de, hl
 
-                        ld b, 16
+                        ld b, 16                                ; draw row of 16 bricks
 
 DrawLowerDividerRowStart:
                         ld ix, hl
@@ -417,42 +419,42 @@ DrawLowerDividerRowStart:
                         cp 0
                         jr nz, DrawLowerDividerRow1             ; Not empty, jump
 
-                        ld a, (ix - 16)
+                        ld a, (ix - 16)                         ; empty so check the previous row
                         cp 0
-                        jr z, DrawLowerDividerRow2
+                        jr z, DrawLowerDividerRow2              ; previous row empty so jump to skip drawing border
 
-                        ld a, 255
+                        ld a, 255                               ; draw two chars of 255
                         ld (de), a
                         inc de
                         ld (de), a
                         inc de
 
-                        jr DrawLowerDividerRowNext
+                        jr DrawLowerDividerRowNext              ; next brick
 
 DrawLowerDividerRow2:
-                        ld a, (ix - 1)
+                        ld a, (ix - 1)                          ; check previous brick
                         cp 0
-                        jr z, DrawLowerDividerRow21
+                        jr z, DrawLowerDividerRow21             ; empty, skip drawing border
 
-                        ld a, 128
+                        ld a, 128                               ; right border of previous brick
 DrawLowerDividerRow21:
-                        ld (de), a
+                        ld (de), a                              ; draw first half of space
                         inc de
 
-                        ld a, (ix + 1)
+                        ld a, (ix + 1)                          ; check next brick
                         cp 0
-                        jr z, DrawLowerDividerRow22
+                        jr z, DrawLowerDividerRow22             ; empty, skip drawing border
 
-                        ld a, 1
+                        ld a, 1                                 ; left hand border
 
 DrawLowerDividerRow22:
-                        ld (de), a
+                        ld (de), a                              ; draw second half of space
                         inc de
 
-                        jr DrawLowerDividerRowNext
+                        jr DrawLowerDividerRowNext              ; next brick
 
 DrawLowerDividerRow1:
-                        ld a, (iy)
+                        ld a, (iy)                              ; brick is not empty, draw sprite
                         ld (de), a
                         inc de
 
@@ -460,11 +462,9 @@ DrawLowerDividerRow1:
                         ld (de), a
                         inc de
 
-                        ld (de), a
-
 DrawLowerDividerRowNext:
                         inc hl
-                        djnz DrawLowerDividerRowStart
+                        djnz DrawLowerDividerRowStart           ; go to next brick
 
                         pop hl, de
                         ret
