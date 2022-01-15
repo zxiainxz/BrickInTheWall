@@ -71,7 +71,7 @@ ShiftLeft1:
 
 ; de - screen address
 ; ix - sprite data
-OverdrawSprite8x8:
+OverdrawSprite8x8NoShift:
                         push bc
 
                         ld b, 8                         ; Size of sprite

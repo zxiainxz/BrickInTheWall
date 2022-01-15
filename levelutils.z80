@@ -501,7 +501,7 @@ CheckBrickCollision:
                         ret nc
 
                         ld iy, LevelMap                                 ; point to the LevelMap
-                        ld c, 0                                         ; y = 0
+                        ld c, 32                                        ; y = 0
 
 CheckRow:
                         ld b, 0                                         ; x = 0
@@ -511,45 +511,34 @@ CheckBrick:
                         cp 0                                            ; Check an empty slot
                         jr z, CheckNextBrick
 
-                        push bc                                         ; Store bc
-
-                        push hl                                         ; store hl
-                        call Brick2Pixel                                ; convert brick slot to pixel in hl
-                        push hl                                         ; copy hl -> bc
-                        pop bc
-
-                        pop hl                                          ; restore hl
-
                         call CheckCollision8v16x8v8                     ; Check if the ball has entered the 8x8 
-                        pop bc                                          ; restore the brick counters
 
                         jr z, BrickCollision                            ; check the fine grained collisions
 CheckNextBrick:
                         inc iy                                          ; move to the next brick
-                        inc b                                           ; next x
 
                         ld a, b
-                        cp 16                                           ; check not end of row
+                        add 16
+                        ld b, a
+                        cp 256
                         jr nz, CheckBrick
                                                                         ; end of row
-                        inc c                                           ; move to next row
                         ld a, c                                         ; check not end of bricks
-                        cp 16
+                        add 8
+                        ld c, a
+                        cp 160
                         jr nz, CheckRow
 
                         ret
 
-; inputs - iy set to the collision brick
+; inputs: iy - the collision brick
+;         bc - x,y of the colllision brick
+;         hl - x,y of the ball
 BrickCollision:
-                        push hl
-
-                        call Brick2Pixel                                ; hl contains pixel x,y of brick
-
                         push bc
                         call CheckFineGrainCollision            ; check fine grained collision
                         pop bc
-                        pop hl
-                        
+
                         jr nz, CheckNextBrick                       ; check if we actually hit before removing brick
 
                         call RemoveBrick                        ; remove the brick
@@ -560,18 +549,18 @@ CheckFineGrainCollision:
                                                                 ; first check if the centre of the ball
                                                                 ; on the y axis is between bounds of the brick
 
-                        ld b, l                                 ; lower brick y in b
-                        ld a, l                                 ; add 8
-                        add 8
+                        push bc
+
+                        ld a, b                                 ; lower brick y in b
+                        add 8                                   ; add 8
                         ld c, a                                 ; higher brick y in c
 
-                        push ix
-                        ld ix, spritetable
-                        ld a, (ix+SPRITETABLE_Y)                ; ball y in a
-                        pop ix
+                        ld a, l                                 ; ball y in a
                         add 4                                   ; get centre of ball
 
                         call Between                            ; is centre of ball between the brick y?
+
+                        pop bc
                         jr nz, CheckDirectionSwitch2            ; no? then check the x side
 
                         call Switch_XDir                        ; if ball y is between the brick y then
@@ -582,19 +571,18 @@ CheckFineGrainCollision:
 CheckDirectionSwitch2:
                                                                 ; next check if the centre of the ball
                                                                 ; on the x axis is between the bounds of the brick
+                        push bc
 
-                        ld b, h                                 ; lower brick x in b
-                        ld a, h                                 ; add 16
+                        ld b, c                                 ; lower brick x in b
+                        ld a, c                                 ; add 16
                         add 15
                         ld c, a                                 ; higher brick x in c
 
-                        push ix
-                        ld ix, spritetable
-                        ld a, (ix+SPRITETABLE_X)                          ; ball x in a
-                        pop ix
+                        ld a, h                                 ; ball x in a
                         add 4                                   ; centre of the ball
 
                         call Between                            ; is between x bounds?
+                        pop bc
                         jr nz, CheckInnerBox                    ; no? check the inner box
 
                         call Switch_YDir                        ; if ball x is between brick x then
@@ -605,15 +593,13 @@ CheckDirectionSwitch2:
 
 CheckInnerBox:
                                                                 ; inner box is the 6x6 box inside the 8x8
-                        push ix
-                        ld ix, spritetable
-                        ld b, (ix+SPRITETABLE_X)
-                        ld c, (ix+SPRITETABLE_Y)
-                        pop ix
-                        inc b                                   ; inset the hit box
-                        inc c
+                        push hl
+                        inc h
+                        inc l
 
                         call CheckColllision6v16x6v8            ; check inner box
+                        pop hl
+
                         ret nz                                  ; Didn't collide, so return
 
                         call Switch_YDir                        ; Hitting the inner box means it hit on the corner
@@ -628,22 +614,16 @@ CheckInnerBox:
 ; RemoveBrick - Remove the brick from the screen
 
 RemoveBrick
-                        ; bc: brick x,y
+                        ; bc: brick pixel x,y
                         ; iy: brick in levelmap
                         ; hl: ball x,y
-
-                        push hl                                 ; Store hl cos stuff trashes it
-
-                        call Brick2Pixel                        ; hl now has brick pixel x,y
 
                         xor a
                         ld (iy), a                              ; erase brick
 
-                        ld a, l
+                        ld a, c
                         dec a
                         ld (needsdisplay), a
-
-                        pop hl
 
                         call AddBrickScore
 

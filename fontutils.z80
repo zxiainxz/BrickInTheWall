@@ -71,7 +71,7 @@ OverdrawNextChar:
                         
                         push bc
                         call GetChar
-                        call OverdrawSprite8x8
+                        call OverdrawSprite8x8NoShift
                         pop bc
                         
 OverdrawMoveToNextChar:

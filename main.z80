@@ -91,9 +91,8 @@ Interrupt:
                         push de
                         push hl
                         push iy
-
-                        call EraseAllSprites                            ; Remove the old sprites
                         
+                        call EraseAllSprites                            ; Remove the old sprites
                                                                         ; FIXME: Might be nice to cache this for speed
                         ld h, 0
                         ld a, (currentloop)
