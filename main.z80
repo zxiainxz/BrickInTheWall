@@ -77,6 +77,16 @@ InitialiseInterrupt:
                         im 2                                            ; switch to IM 2
                         ei                                              ; Turn on interrupts again
 
+; Timing debugging colours
+; black: Erase sprites
+; blue: Initialise draw routine
+; red: redraw bricks
+; magenta: Redraw sprites
+; green: brick collision
+; cyan: brick collision
+; yellow: other collisions
+; white: game loop complete
+
 Interrupt:
                         di                                              ; Disable interrupts
                         push af                                         ; Push everything to the stack
@@ -91,7 +101,10 @@ Interrupt:
                         push de
                         push hl
                         push iy
-                        
+
+                        xor a                                           ; clear a to 0 (black)
+                        out (#fe), a                                    ; set border to 0
+
                         call EraseAllSprites                            ; Remove the old sprites
                                                                         ; FIXME: Might be nice to cache this for speed
                         ld h, 0
@@ -109,11 +122,19 @@ Interrupt:
                         cp 0
                         jr z, InterruptDrawFinished
 
+                        ld a, 2
+                        out (#fe), a
                         jp (hl)                                         ; jump to it
 
 InterruptDrawFinished:
 
+                        ld a, 3
+                        out (#fe), a
+
                         call DrawAllSprites                             ; Draw the new sprites
+
+                        ld a, 4
+                        out (#fe), a
 
                         pop iy                                          ; pop it all back off the stack
                         pop hl

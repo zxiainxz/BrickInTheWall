@@ -33,12 +33,19 @@ Wait_Timer:
 
                         ld ix, spritetable
 
+                        ld a, 4
+                        out (#fe), a
+
                         call CheckBatCollision
 
+                        ld a, 5
+                        out (#fe), a
                         ld hl, (ix+SPRITETABLE_Y)                       ; the ball is the first entry in the sprite
                                                                         ; table
 
                         call CheckBrickCollision
+                        ld a, 6
+                        out (#fe), a
 
                         ld a, (LevelBlockCount)
                         cp 0
@@ -46,6 +53,9 @@ Wait_Timer:
 
                         call CheckYEdgeCollision
                         call CheckXEdgeCollision
+
+                        ld a, 1
+                        out (#fe), a
 
                         call CheckLoseBall
                         jp z, RestartLife
