@@ -59,7 +59,7 @@ DisplayStringDone:
 ; h, l: x, y
 ; bc: string address 0 terminated
 OverdrawString:
-                        push hl
+                        push hl, ix
 OverdrawNextChar:
                         ld a, (bc)
                         cp 0
@@ -82,7 +82,7 @@ OverdrawMoveToNextChar:
                         jr OverdrawNextChar
 
 OverdrawStringDone:
-                        pop hl
+                        pop ix, hl
                         ret
 
 ; bc: pointer to string

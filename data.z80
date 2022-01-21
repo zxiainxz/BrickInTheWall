@@ -1,20 +1,27 @@
 ; Sprites
-; Ball_Data:              db 24, 102, 82, 161, 129, 66, 102, 24
-Ball_Data:               db 24, 36, 82, 161, 129, 66, 36, 24
 
-ball8x8Data:            dw ball8x8Data0, ball8x8Data1, ball8x8Data3, ball8x8Data4, ball8x8Data5, ball8x8Data6, ball8x8Data7
-ball8x8Data0: db 24, 0, 36, 0, 82, 0, 161, 0, 129, 0, 66, 0, 36, 0, 24, 0
-ball8x8Data1: db 12, 0, 18, 0, 41, 0, 80, 128, 64, 128, 33, 0, 18, 0, 12, 0
-ball8x8Data2: db 6, 0, 9, 0, 20, 128, 40, 64, 32, 64, 16, 128, 9, 0, 6, 0
-ball8x8Data3: db 3, 0, 4, 128, 10, 64, 20, 32, 16, 32, 8, 64, 4, 128, 3, 0
-ball8x8Data4: db 1, 128, 2, 64, 5, 32, 10, 16, 8, 16, 4, 32, 2, 64, 1, 128
-ball8x8Data5: db 0, 192, 1, 32, 2, 144, 5, 8, 4, 8, 2, 16, 1, 32, 0, 192
-ball8x8Data6: db 0, 96, 0, 144, 1, 72, 2, 132, 2, 4, 1, 8, 0, 144, 0, 96
-ball8x8Data7: db 0, 48, 0, 72, 0, 164, 1, 66, 1, 2, 0, 132, 0, 72, 0, 48
+ball8x8Data:            dw ball8x8Data0, ball8x8Data1, ball8x8Data2, ball8x8Data3, ball8x8Data4, ball8x8Data5, ball8x8Data6, ball8x8Data7
+ball8x8Data0: db 24, 102, 82, 161, 129, 66, 102, 24
+ball8x8Data1: db 12, 0, 51, 0, 41, 0, 80, 128, 64, 128, 33, 0, 51, 0, 12, 0
+ball8x8Data2: db 6, 0, 25, 128, 20, 128, 40, 64, 32, 64, 16, 128, 25, 128, 6, 0
+ball8x8Data3: db 3, 0, 12, 192, 10, 64, 20, 32, 16, 32, 8, 64, 12, 192, 3, 0
+ball8x8Data4: db 1, 128, 6, 96, 5, 32, 10, 16, 8, 16, 4, 32, 6, 96, 1, 128
+ball8x8Data5: db 0, 192, 3, 48, 2, 144, 5, 8, 4, 8, 2, 16, 3, 48, 0, 192
+ball8x8Data6: db 0, 96, 1, 152, 1, 72, 2, 132, 2, 4, 1, 8, 1, 152, 0, 96
+ball8x8Data7: db 0, 48, 0, 204, 0, 164, 1, 66, 1, 2, 0, 132, 0, 204, 0, 48
 
 brickSize: db 16, 8
 Brick_Data: db 255, 254, 128, 0, 128, 0, 128, 0, 128, 0, 128, 0, 128, 0, 0, 0
-Bat_Data:               db 255, 255, 160, 5, 160, 5, 195,195, 196, 35, 169, 85, 170, 149,255, 255
+
+bat16x8Data:  dw bat16x8Data0, bat16x8Data1, bat16x8Data2, bat16x8Data3, bat16x8Data4, bat16x8Data5, bat16x8Data6, bat16x8Data7
+bat16x8Data0: db 63, 252, 68, 34, 155, 217, 183, 237, 168, 21, 137, 145, 72, 18, 63, 252
+bat16x8Data1: db 31, 254, 0, 34, 17, 0, 77, 236, 128, 91, 246, 128, 84, 10, 128, 68, 200, 128, 36, 9, 0, 31, 254, 0
+bat16x8Data2: db 15, 255, 0, 17, 8, 128, 38, 246, 64, 45, 251, 64, 42, 5, 64, 34, 100, 64, 18, 4, 128, 15, 255, 0
+bat16x8Data3: db 7, 255, 128, 8, 132, 64, 19, 123, 32, 22, 253, 160, 21, 2, 160, 17, 50, 32, 9, 2, 64, 7, 255, 128
+bat16x8Data4: db 3, 255, 192, 4, 66, 32, 9, 189, 144, 11, 126, 208, 10, 129, 80, 8, 153, 16, 4, 129, 32, 3, 255, 192
+bat16x8Data5: db 1, 255, 224, 2, 33, 16, 4, 222, 200, 5, 191, 104, 5, 64, 168, 4, 76, 136, 2, 64, 144, 1, 255, 224
+bat16x8Data6: db 0, 255, 240, 1, 16, 136, 2, 111, 100, 2, 223, 180, 2, 160, 84, 2, 38, 68, 1, 32, 72, 0, 255, 240
+bat16x8Data7: db 0, 127, 248, 0, 136, 68, 1, 55, 178, 1, 111, 218, 1, 80, 42, 1, 19, 34, 0, 144, 36, 0, 127, 248
 
 ; Level store
 ; 16*rows*3
@@ -28,6 +35,10 @@ LevelIterators:         dw NULL, NULL, NULL
 ; variables
 yballdir:               db 0
 xballdir:               db 0
+oldbally:               db 0
+oldballx:               db 0
+proposedbally:          db 0
+proposedballx:          db 0
 
 needsdisplay:           db 0
 tmpx:                   db 0                                    ; Used by SpriteUtils to store x coord temporarily. IS IT?
@@ -43,17 +54,19 @@ LEVELDATA_COUNT         EQU 0
 LEVELDATA_NAME          EQU 1
 LEVELDATA_DATA          EQU 3
 
-; sprite table, enough space for 10 sprites on screen
-; flags, x, y, old x, old y, data address = 7 bytes
+; sprite table, enough space for 2 sprites on screen
 ; Flags: bit 1 - active
 ;        bit 2 - size (0 - 8x8, 1 - 16x8)
 SPRITETABLE_FLAGS       EQU 0
 SPRITETABLE_Y           EQU 1
 SPRITETABLE_X           EQU 2
-SPRITETABLE_OLD_Y       EQU 3
-SPRITETABLE_OLD_X       EQU 4
-SPRITETABLE_DATA        EQU 5
-SPRITETABLE_SIZE        EQU 7
+SPRITETABLE_OLD_SCADD   EQU 3
+SPRITETABLE_PRESHIFT    EQU 5
+SPRITETABLE_DATA        EQU 7
+SPRITETABLE_SCADD       EQU 9
+SPRITETABLE_OLD_DATA    EQU 11
+SPRITETABLE_OLD_X       EQU 13
+SPRITETABLE_SIZE        EQU 14
 
 spritetable:            block SPRITETABLE_SIZE * MAX_SPRITES
 

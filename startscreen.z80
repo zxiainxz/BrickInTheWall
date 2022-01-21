@@ -5,12 +5,12 @@ StartScreenInitialise:
                         ld a, 1
                         out (#fe), a
 
-                        ld hl, 0x3c3c                           ; 60, 60
+                        ld hl, 0x3c40                           ; 60, 64
 
                         ld bc, breakthru_string
                         call DisplayString
 
-                        ld hl, 0x305c                           ; 40, 92
+                        ld hl, 0x3060                           ; 40, 96
                         ld bc, anykey_string
                         call DisplayString
 
@@ -22,6 +22,8 @@ StartScreenLoop:
 
                         and 1
                         jr nz, StartScreenLoop                  ; Wait for space
+
+                        call InitialiseScore
 
                         ld a, INTRO_SCENE
                         ld (currentloop), a                     ; Move to the game loop

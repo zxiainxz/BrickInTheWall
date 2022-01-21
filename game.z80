@@ -17,7 +17,7 @@ GameLoopInitialise:
                         call LoadSprites                                ; Put the sprites this scene uses into the
                                                                         ; sprite table
                         call DrawAllSprites                             ; Draw the sprites once so the interrupt
-                                                                        ; has something to erase
+                                                                        ; has something to erase                        
                         jp InitialiseFinished
 
 MainGameLoop:
@@ -26,22 +26,19 @@ Wait_Timer:
                         halt                                            ; Wait
                         ; djnz Wait_Timer
 
-                        call Move_BallY
-                        call Move_BallX
+                        call ProposeBallMove                            ; proposed ball coordinates in hl
 
                         call ReadKeys
 
                         ld ix, spritetable
 
-                        ld a, 4
+                        ld a, 0
                         out (#fe), a
 
                         call CheckBatCollision
 
                         ld a, 5
                         out (#fe), a
-                        ld hl, (ix+SPRITETABLE_Y)                       ; the ball is the first entry in the sprite
-                                                                        ; table
 
                         call CheckBrickCollision
                         ld a, 6
@@ -60,6 +57,7 @@ Wait_Timer:
                         call CheckLoseBall
                         jp z, RestartLife
 
+                        call CommitBallMove
                         jr MainGameLoop
 
 GameLoopDraw:
@@ -102,23 +100,32 @@ StartLevel:
 
                         ret
 
+GameOver:
+                        xor a
+                        ld (currentlevel), a                    ; reset the level
+
+                        ld a, GAMEOVER_SCENE                    ; Show the game over scene
+                        ld (currentloop), a
+                        jp SwitchMainLoop
+
 ResetBallBat:
                         ld ix, spritetable
 
-                        ld a, INITIAL_BALL_Y
-                        ld (ix+SPRITETABLE_Y), a
-                        ld a, INITIAL_BALL_X
-                        ld (ix+SPRITETABLE_X), a
+                        ld hl, INITIAL_BALL_COORDS
+                        call UpdateSpriteXY
+                        ld (proposedbally), hl
+                        ld (oldbally), hl
 
                         ld de, SPRITETABLE_SIZE
                         add ix, de
 
+                        ld hl, (ix+SPRITETABLE_Y)
                         ld a, INITIAL_BAT_X
-                        ld (ix+SPRITETABLE_X), a
+                        ld h, a
+                        call UpdateSpriteXY
 
-                        xor a
-                        ld (yballdir), a
-                        ld (xballdir), a
+                        ld hl, NULL
+                        ld (yballdir), hl
                         ret
 
 DrawLives:
@@ -128,10 +135,32 @@ DrawLives:
 
                         ld b, a
                         ld hl, 0xCD00
-DrawLife:               
-                        push hl         
+DrawLife:                        
                         call scadd
-                        call DrawBatSprite
+                        push hl, de
+
+                        ld de, bat16x8Data
+                        ld a, h
+
+                        push af
+
+                        and 7
+
+                        ld h, 0
+                        ld l, a
+
+                        add hl, hl
+                        
+                        add hl, de
+                        ld a, (hl)
+                        inc hl
+                        ld h, (hl)
+                        ld l, a
+
+                        pop af
+                        pop de
+
+                        call DrawSprite16x8PreShiftCharRow
                         pop hl
 
                         ld d, 17
@@ -140,6 +169,37 @@ DrawLife:
 
                         djnz DrawLife
 
+                        ret
+
+; Works out where the ball should move to
+; Outputs: hl - proposed ball x,y
+ProposeBallMove:
+                        ld hl, (proposedbally)
+                        ld (oldbally), hl
+
+                        ld a, (yballdir)               ; Get ball direction
+                        cp 0
+                        jr z, ProposeBallMoveX
+
+                        add l                           ; move ball in that direction
+                        ld l, a
+
+                        ld (proposedbally), a
+
+ProposeBallMoveX:
+                        ld a, (xballdir)
+                        cp 0
+                        ret z
+
+                        add h
+                        ld h, a
+
+                        ld (proposedballx), a
+                        ret
+
+CommitBallMove:
+                        ld hl, (proposedbally)
+                        call UpdateSpriteXY
                         ret
 
 ; input - ix set to spritetable
@@ -160,51 +220,78 @@ CheckLoseBall:
                         cp a                            ; set z to indicate a loss
                         ret
 
-GameOver:
-                        ld a, GAMEOVER_SCENE
-                        ld (currentloop), a
-                        jp SwitchMainLoop
-
 ; LoadSprites - Load the sprite data into the sprite table. Always use index 0 for ball, index 1 for bat
 LoadSprites:
                         ld ix, spritetable
                         ld a, 1
                         ld (ix+SPRITETABLE_FLAGS), a
+
+                        ld hl, ball8x8Data
+                        ld (ix+SPRITETABLE_PRESHIFT), hl
+
                         ld hl, INITIAL_BALL_COORDS
-                        ld (ix+SPRITETABLE_Y), hl
-                        ld (ix+SPRITETABLE_OLD_Y), hl
-                        ld hl, Ball_Data
-                        ld (ix+SPRITETABLE_DATA), hl
+                        ld (proposedbally), hl
+                        ld (oldbally), hl
+                        call UpdateSpriteXY
+                        ld (ix+SPRITETABLE_OLD_X), l
+
+                        ld hl, (ix+SPRITETABLE_SCADD)
+                        ld (ix+SPRITETABLE_OLD_SCADD), hl
+                        ld de, (ix+SPRITETABLE_DATA)
+                        ld (ix+SPRITETABLE_OLD_DATA), de
 
                         ld de, SPRITETABLE_SIZE
                         add ix, de
 
                         ld a, 3
                         ld (ix+SPRITETABLE_FLAGS), a
+
+                        ld hl, bat16x8Data
+                        ld (ix+SPRITETABLE_PRESHIFT), hl
+
                         ld hl, INITIAL_BAT_COORDS
-                        ld (ix+SPRITETABLE_Y), hl
-                        ld (ix+SPRITETABLE_OLD_Y), hl
-                        ld hl, Bat_Data
-                        ld (ix+SPRITETABLE_DATA), hl
+                        call UpdateSpriteXY
+                        ld (ix+SPRITETABLE_OLD_X), l
+
+                        ld hl, (ix+SPRITETABLE_SCADD)
+                        ld (ix+SPRITETABLE_OLD_SCADD), hl
+                        ld de, (ix+SPRITETABLE_DATA)
+                        ld (ix+SPRITETABLE_OLD_DATA), de
 
                         ret
 
+; The ball was hit on the y axis and so it needs to be moved back to the old position moved again
+; Outputs: hl - new proposed ball x,y
 Ball_HitY:
-                        call Move_BallY
-                        call Move_BallY
+                        ld a, (oldbally)
+
+                        ld bc, (yballdir)
+                        add c
+
+                        ld (proposedbally), a
+
+                        ld hl, (proposedbally)
                         ret
 
+; The ball was hit on the x axis and so it needs to be moved back to the old position moved again
+; Outputs: hl - new proposed ball x,y
 Ball_HitX:
-                        call Move_BallX
-                        call Move_BallX
+                        ld a, (oldballx)
+
+                        ld bc, (xballdir)
+                        add c
+
+                        ld (proposedballx), a
+
+                        ld hl, (proposedbally)
                         ret
 
+; Checks if the bat and ball have collided
+; inputs: hl - ball x, y
 CheckBatCollision:
                         ld a, (yballdir)
-                        cp 1
-                        ret nz 
-
-                        ld hl, (ix+SPRITETABLE_Y)                 ; ball in hl
+                        cp 0
+                        ret z
 
                         ld a, l                         ; Check if ball is near bat
                         cp 177                          ; this is when the bottom of the ball crosses the bat line
@@ -275,39 +362,22 @@ CheckXEdgeCollision:
                         ld a, (ix+SPRITETABLE_X)
 
                         cp 0
-                        jr z, Switch_XDir
+                        jr nz, CheckRightEdge
+                        call Switch_XDir
+                        jr Ball_HitX
 
+CheckRightEdge:
                         cp 247
-                        call z, Switch_XDir
-                        jr z, Ball_HitX
+                        ret nz
+
+                        call Switch_XDir
+                        jr Ball_HitX
                         ret
 
 Move_BallY:
-                        push ix
-
-                        ld ix, spritetable
-                        ld a, (ix+SPRITETABLE_Y)                  ; Get Y coord
-                        ld (ix+SPRITETABLE_OLD_Y), a
-
-                        ld bc, (yballdir)               ; Get ball direction
-                        add c                           ; move ball in that direction
-
-                        ld (ix+SPRITETABLE_Y), a                  ; set the new y coord
-
-                        pop ix
                         ret
 
 Move_BallX:
-                        push ix
-                        ld ix, spritetable
-                        ld a, (ix+SPRITETABLE_X)
-                        ld (ix+SPRITETABLE_OLD_X), a
-
-                        ld bc, (xballdir)
-                        add c
-                        ld (ix+SPRITETABLE_X), a
-
-                        pop ix
                         ret
 
 Switch_YDir:
@@ -360,40 +430,44 @@ CompleteLevel:
                         xor a
                         ld (LevelBlockCount), a
                         ret
+
 Move_BatLeft:
-                        push ix
+                        push hl, ix
+
                         ld ix, spritetable+SPRITETABLE_SIZE
-                        ld a, (ix+SPRITETABLE_X)
+                        ld hl, (ix+SPRITETABLE_Y)
+                        ld a, h
 
                         cp 0
                         jr z, Move_BatLeftDone
 
-                        ld (ix+SPRITETABLE_OLD_X), a
                         sub 3
 
-                        ld (ix+SPRITETABLE_X), a
+                        ld h, a
+                        call UpdateSpriteXY
 
                         ld a, (yballdir)
                         cp 0
 
                         call z, MoveBallToBat
 Move_BatLeftDone:
-                        pop ix
+                        pop ix, hl
                         ret
 
 Move_BatRight:
-                        push ix
+                        push hl, ix
 
                         ld ix, spritetable+SPRITETABLE_SIZE
-                        ld a, (ix+SPRITETABLE_X)
+                        ld hl, (ix+SPRITETABLE_Y)
+                        ld a, h
 
                         cp 240
                         jr z, Move_BatRightDone
 
-                        ld (ix+SPRITETABLE_OLD_X), a
                         add 3
 
-                        ld (ix+SPRITETABLE_X), a
+                        ld h, a
+                        call UpdateSpriteXY
 
                         ld a, (yballdir)
                         cp 0
@@ -401,18 +475,19 @@ Move_BatRight:
                         call z, MoveBallToBat
 
 Move_BatRightDone
-                        pop ix
+                        pop ix, hl
                         ret
 
 MoveBallToBat:
-                        push ix
                         ld ix, spritetable
 
                         ld a, (ix+SPRITETABLE_X+SPRITETABLE_SIZE)
                         add 4
 
-                        ld (ix+SPRITETABLE_X), a
+                        ld hl, (ix+SPRITETABLE_Y)
+                        ld h, a
 
-                        pop ix
+                        ld (proposedbally), hl
+                        call UpdateSpriteXY
 
                         ret

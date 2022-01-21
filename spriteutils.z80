@@ -69,6 +69,225 @@ ShiftLeft1:
                         ld c, a
                         jr ShiftComplete
 
+; hl - sprite table
+; de - screen address
+; a - x coord
+DrawSprite8x8PreShift:
+                        push af, bc, de, hl, ix
+                        ld (DrawSprite8x8PreShiftDone + 1), sp
+
+                        and 7
+                        jr z, DrawSprite8x8PreShift0
+
+
+                        jr DrawSprite8x8PreShift17
+
+DrawSprite8x8PreShiftDone:
+                        ld sp, 0
+                        pop ix, hl, de, bc, af
+                        ret
+
+
+DrawSprite8x8PreShift0:
+                        ld sp, hl
+                        ld b, 4
+                        ex de, hl
+
+DrawSprite8x8PreShift0Draw2Rows:
+                        pop de
+
+                        ld a, (hl)
+                        xor e
+                        ld (hl), a
+
+                        inc h
+                        ld a, h
+                        and 0x07
+                        jr nz, DrawSprite8x8PreShift0Row1
+
+                        ld a, l
+                        add a, 32
+                        ld l, a
+                        jr c, DrawSprite8x8PreShift0Row1
+
+                        ld a, h
+                        sub 8
+                        ld h, a
+
+DrawSprite8x8PreShift0Row1:
+                        ld a, (hl)
+                        xor d
+                        ld (hl), a
+
+                        inc h
+                        ld a, h
+                        and 0x07
+                        jr nz, DrawSprite8x8PreShift0Next2Rows
+
+                        ld a, l
+                        add a, 32
+                        ld l, a
+                        jr c, DrawSprite8x8PreShift0Next2Rows
+
+                        ld a, h
+                        sub 8
+                        ld h, a
+
+DrawSprite8x8PreShift0Next2Rows:
+                        djnz DrawSprite8x8PreShift0Draw2Rows
+
+                        jp DrawSprite8x8PreShiftDone
+
+DrawSprite8x8PreShift17:
+                        ld sp, hl
+                        ld b, 8
+                        ex de, hl
+
+DrawSprite8x8PreShift17DrawRow:
+                        pop de
+
+                        ld a, (hl)
+                        xor e
+                        ld (hl), a
+                        inc l
+                        ld a, (hl)
+                        xor d
+                        ld (hl), a
+                        dec l                                   ; we could zigzag here
+
+                        ; ld (hl), de
+
+                        inc h
+                        ld a, h
+                        and 0x07
+                        jr nz, DrawSprite8x8PreShift17NextRow
+
+                        ld a, l
+                        add a, 32
+                        ld l, a
+                        jr c, DrawSprite8x8PreShift17NextRow
+
+                        ld a, h
+                        sub 8
+                        ld h, a
+
+DrawSprite8x8PreShift17NextRow:
+                        djnz DrawSprite8x8PreShift17DrawRow
+
+                        jp DrawSprite8x8PreShiftDone
+
+
+DrawSprite16x8PreShiftCharRow:
+                        push af, bc, de, hl, ix
+                        ld (DrawSprite16x8PreShiftDone + 1), sp
+
+                        and 7
+                        jr z, DrawSprite16x8PreShift0
+
+                        jr DrawSprite16x8PreShift17
+
+DrawSprite16x8PreShiftDone:
+                        ld sp, 0
+                        pop ix, hl, de, bc, af
+
+                        ret
+
+DrawSprite16x8PreShift0:
+                        ld sp, hl
+                        ld b, 4
+                        ex de, hl
+
+DrawSprite16x8PreShift0Draw2Rows:
+                        pop de
+
+                        ld a, (hl)
+                        xor e
+                        ld (hl), a
+
+                        inc hl
+
+                        ld a, (hl)
+                        xor d
+                        ld (hl), a
+
+                        inc h
+
+                        pop de
+
+                        ld a, (hl)
+                        xor d
+                        ld (hl), a
+
+                        dec hl
+
+                        ld a, (hl)
+                        xor e
+                        ld (hl), a
+
+                        inc h
+
+DrawSprite16x8PreShift0Next2Rows:
+                        djnz DrawSprite16x8PreShift0Draw2Rows
+
+                        jr DrawSprite16x8PreShiftDone
+
+DrawSprite16x8PreShift17:
+                        ld sp, hl
+                        ld b, 4
+                        ex de, hl
+
+DrawSprite16x8PreShift17Draw2Rows:                        ; FIXME, should zig zag the data to avoid the extra dec hls
+                        pop de
+
+                        ld a, (hl)
+                        xor e
+                        ld (hl), a
+
+                        inc hl
+
+                        ld a, (hl)
+                        xor d
+                        ld (hl), a
+
+                        inc hl
+
+                        pop de
+
+                        ld a, (hl)
+                        xor e
+                        ld (hl), a
+
+                        inc h
+                        dec hl
+                        dec hl
+
+                        ld a, (hl)
+                        xor d
+                        ld (hl), a
+
+                        inc hl
+
+                        pop de
+
+                        ld a, (hl)
+                        xor e
+                        ld (hl), a
+
+                        inc hl
+
+                        ld a, (hl)
+                        xor d
+                        ld (hl), a
+
+                        inc h
+                        dec hl
+                        dec hl
+
+DrawSprite16x8PreShift17Next2Rows:
+                        djnz DrawSprite16x8PreShift17Draw2Rows
+
+                        jr DrawSprite16x8PreShiftDone
+
 ; de - screen address
 ; ix - sprite data
 OverdrawSprite8x8NoShift:
@@ -281,15 +500,49 @@ CheckX6v16x6v8:
                         cp a
                         ret
 
-DrawBallSprite:
-                        ld ix, Ball_Data
-                        call DrawSprite8x8
-                        ret
+; ix - sprite location
+; hl - x,y
+UpdateSpriteXY:
+                        push hl
+                        or a
+                        ld de, (ix+SPRITETABLE_Y)
+                        sbc hl, de
+                        pop hl
+                        ret z
 
-; da na na na na na na na batsprite!
-DrawBatSprite:
-                        ld ix, Bat_Data
-                        call DrawSprite16x8
+                        push hl
+                        ld a, (ix+SPRITETABLE_X)
+                        ld (ix+SPRITETABLE_OLD_X), a
+
+                        ld (ix+SPRITETABLE_Y), hl
+
+                        ld de, (ix+SPRITETABLE_SCADD)
+                        ld (ix+SPRITETABLE_OLD_SCADD), de
+
+                        ld de, (ix+SPRITETABLE_DATA)
+                        ld (ix+SPRITETABLE_OLD_DATA), de
+
+                        call scadd
+                        ld (ix+SPRITETABLE_SCADD), de
+
+                        ld a, h
+                        and 7
+
+                        ld de, (ix+SPRITETABLE_PRESHIFT)
+
+                        ld h, 0
+                        ld l, a
+
+                        add hl, hl
+                        
+                        add hl, de
+                        ld a, (hl)
+                        inc hl
+                        ld h, (hl)
+                        ld l, a
+
+                        ld (ix+SPRITETABLE_DATA), hl
+                        pop hl
                         ret
 
 DrawAllSprites:
@@ -305,29 +558,32 @@ ProcessNextSprite:
 
                         ld a, c                                         ; Restore flags
 
+                        ld de, (ix+SPRITETABLE_DATA)
+                        ld (ix+SPRITETABLE_OLD_DATA), de
+
+                        ld de, (ix+SPRITETABLE_SCADD)
+                        ld (ix+SPRITETABLE_OLD_SCADD), de
+
                         ld hl, (ix+SPRITETABLE_Y)
+                        ld (ix+SPRITETABLE_OLD_X), h
 
                         push ix
 
-                        ld de, (ix+SPRITETABLE_DATA)
-                        ld ix, de
-
-                        call scadd
                         and %00000010
-
-                        push hl
-
-                        cp 0
                         jr z, Sprite8x8
-                        call DrawSprite16x8
+
+                        ld a, h
+                        ld hl, (ix+SPRITETABLE_DATA)
+                        call DrawSprite16x8PreShiftCharRow
                         jr SpriteDrawn
 Sprite8x8:
-                        call DrawSprite8x8
+                        ld a, h
+                        ld hl, (ix+SPRITETABLE_DATA)
+
+                        call DrawSprite8x8PreShift
 
 SpriteDrawn:
-                        pop hl
                         pop ix
-                        ld (ix+SPRITETABLE_OLD_Y), hl
                         
 NextSprite:
                         ld de, SPRITETABLE_SIZE
@@ -352,30 +608,22 @@ ProcessEraseNextSprite:
 
                         ld a, c                                         ; Restore flags
 
-                        ld hl, (ix+SPRITETABLE_OLD_Y)
+                        ld de, (ix+SPRITETABLE_OLD_SCADD)
+                        ld h, (ix+SPRITETABLE_OLD_X)
 
-                        push ix
-
-                        ld de, (ix+SPRITETABLE_DATA)
-                        ld ix, de
-
-                        call scadd
                         and %00000010
-
-                        push hl
-
-                        cp 0
                         jr z, EraseSprite8x8
-                        call DrawSprite16x8
+
+                        ld a, h
+                        ld hl, (ix+SPRITETABLE_OLD_DATA)
+                        call DrawSprite16x8PreShiftCharRow
                         jr SpriteErased
 EraseSprite8x8:
-                        call DrawSprite8x8
+                        ld a, h
+                        ld hl, (ix+SPRITETABLE_OLD_DATA)
+                        call DrawSprite8x8PreShift
 
-SpriteErased:
-                        pop hl
-                        pop ix
-                        ; ld (ix+SPRITETABLE_OLD_Y), hl
-                        
+SpriteErased:           
 EraseNextSprite:
                         ld de, SPRITETABLE_SIZE
                         add ix, de

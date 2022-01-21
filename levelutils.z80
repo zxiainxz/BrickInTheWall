@@ -494,11 +494,11 @@ DontChangeColour:
 ; Outputs: z - set to indicate collision
 CheckBrickCollision:
                         ld a, l
-                        cp 23                                           ; y-offset
-                        ret c
-
-                        cp 168                                          ; bottom of possible bricks
+                        cp 168                                           ; bottom of possible bricks
                         ret nc
+
+                        cp 23                                          ; top of possible bricks
+                        ret c
 
                         ld iy, LevelMap                                 ; point to the LevelMap
                         ld c, 32                                        ; y = 0
@@ -545,13 +545,37 @@ BrickCollision:
 
                         ret                                     ; ret here will stop checking any other bricks
 
+; bc - brick x,y
+; hl - ball x, y
 CheckFineGrainCollision:
                                                                 ; first check if the centre of the ball
-                                                                ; on the y axis is between bounds of the brick
+                                                                ; on the horizontal
 
                         push bc
 
-                        ld a, b                                 ; lower brick y in b
+                        ld a, b                                 ; add 15
+                        add 16
+                        ld c, a                                 ; higher brick x in c
+
+                        ld a, h                                 ; ball x in a
+                        add 4                                   ; centre of the ball
+
+                        call Between                            ; is between x bounds?
+                        pop bc
+                        jr nz, CheckDirectionSwitch2            ; no? check the vertical
+
+                        call Switch_YDir                        ; if ball x is between brick x then
+                        call Ball_HitY                          ; it hit on the top or bottom
+                                                                ; so switch y direction
+                        cp a                                    ; set z to indicate a collision
+                        ret                                     ; return because it can't hit anywhere else
+
+CheckDirectionSwitch2:
+                                                                ; next check if the centre of the ball
+                                                                ; on the vertical side
+                        push bc
+
+                        ld a, c                                 ; lower brick y in b
                         add 8                                   ; add 8
                         ld c, a                                 ; higher brick y in c
 
@@ -561,35 +585,12 @@ CheckFineGrainCollision:
                         call Between                            ; is centre of ball between the brick y?
 
                         pop bc
-                        jr nz, CheckDirectionSwitch2            ; no? then check the x side
+                        jr nz, CheckInnerBox                    ; no? then check the inner box
 
                         call Switch_XDir                        ; if ball y is between the brick y then
                         call Ball_HitX                          ; it hit on the side, so change x direction
                         cp a                                    ; set z to indicate a collision
                         ret                                     ; return because if can't hit anywhere else
-
-CheckDirectionSwitch2:
-                                                                ; next check if the centre of the ball
-                                                                ; on the x axis is between the bounds of the brick
-                        push bc
-
-                        ld b, c                                 ; lower brick x in b
-                        ld a, c                                 ; add 16
-                        add 15
-                        ld c, a                                 ; higher brick x in c
-
-                        ld a, h                                 ; ball x in a
-                        add 4                                   ; centre of the ball
-
-                        call Between                            ; is between x bounds?
-                        pop bc
-                        jr nz, CheckInnerBox                    ; no? check the inner box
-
-                        call Switch_YDir                        ; if ball x is between brick x then
-                        call Ball_HitY                          ; it hit on the top or bottom
-                                                                ; so switch y direction
-                        cp a                                    ; set z to indicate a colision
-                        ret                                     ; return because it can't hit anywhere else
 
 CheckInnerBox:
                                                                 ; inner box is the 6x6 box inside the 8x8
