@@ -74,6 +74,9 @@ currentloop:            db 0
 mainloops:              dw StartScreenLoop, MainGameLoop, GameOverLoop, IntroLoop, LevelCompleteLoop
 initialisers:           dw StartScreenInitialise, GameLoopInitialise, GameOverInitialise, IntroInitialise, LevelCompleteInitialise
 interruptdraw:          dw NULL, GameLoopDraw, NULL, NULL, NULL
+interruptloop:          dw NULL, GameInterrupt, NULL, NULL, NULL
+
+gameinit:               db 0
 
 bonusadder              db 0
 score:                  byte "000000\0"

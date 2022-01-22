@@ -107,17 +107,8 @@ Interrupt:
 
                         call EraseAllSprites                            ; Remove the old sprites
                                                                         ; FIXME: Might be nice to cache this for speed
-                        ld h, 0
-                        ld a, (currentloop)
-                        ld l, a                                         
-                        add hl, hl                                      ; double it
                         ld de, interruptdraw                            ; load the interrupt draw table
-                        add hl, de                                      ; point to the current draw
-                        ld a, (hl)                                      ; load the address in the table into hl
-                        inc hl
-                        ld h, (hl)
-                        ld l, a
-
+                        call GetMethod
                         ld a, h
                         cp 0
                         jr z, InterruptDrawFinished
@@ -136,6 +127,16 @@ InterruptDrawFinished:
                         ld a, 4
                         out (#fe), a
 
+                        ld de, interruptloop                            ; load the interrupt draw table
+                        call GetMethod
+
+                        ld a, h
+                        cp 0
+                        jr z, InterruptFinished
+
+                        jp (hl)
+                        
+InterruptFinished:
                         pop iy                                          ; pop it all back off the stack
                         pop hl
                         pop de
@@ -149,6 +150,19 @@ InterruptDrawFinished:
                         pop bc
                         pop af
                         ei                                              ; enable interrupts again
+                        ret
+
+GetMethod:
+                        ld h, 0
+                        ld a, (currentloop)
+                        ld l, a                                         
+                        add hl, hl                                      ; double it
+                        add hl, de                                      ; point to the current draw
+                        ld a, (hl)                                      ; load the address in the table into hl
+                        inc hl
+                        ld h, (hl)
+                        ld l, a
+
                         ret
 
 SwitchState:

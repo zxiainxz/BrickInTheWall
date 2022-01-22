@@ -1,4 +1,6 @@
 GameLoopInitialise:
+                        xor a
+                        ld (gameinit), a
                         ld hl, lives
                         ld (hl), INITIAL_LIVES                          ; set initial lives
 
@@ -18,46 +20,22 @@ GameLoopInitialise:
                                                                         ; sprite table
                         call DrawAllSprites                             ; Draw the sprites once so the interrupt
                                                                         ; has something to erase                        
+
+                        ld a, 1
+                        ld (gameinit), a
+
                         jp InitialiseFinished
 
 MainGameLoop:
-                        ; ld b, 1                                         ; number of halt instructions
-Wait_Timer:
-                        halt                                            ; Wait
-                        ; djnz Wait_Timer
-
-                        call ProposeBallMove                            ; proposed ball coordinates in hl
-
-                        call ReadKeys
-
-                        ld ix, spritetable
-
-                        ld a, 0
-                        out (#fe), a
-
-                        call CheckBatCollision
-
-                        ld a, 5
-                        out (#fe), a
-
-                        call CheckBrickCollision
-                        ld a, 6
-                        out (#fe), a
-
+                        halt
                         ld a, (LevelBlockCount)
                         cp 0
                         jp z, LevelComplete
 
-                        call CheckYEdgeCollision
-                        call CheckXEdgeCollision
+                        ld a, (lives)
+                        cp 0
+                        jr z, GameOver
 
-                        ld a, 1
-                        out (#fe), a
-
-                        call CheckLoseBall
-                        jp z, RestartLife
-
-                        call CommitBallMove
                         jr MainGameLoop
 
 GameLoopDraw:
@@ -69,7 +47,48 @@ GameLoopDraw:
 
                         jp InterruptDrawFinished
 
+GameInterrupt:
+                        ld a, (gameinit)
+                        cp 0
+                        jp z, InterruptFinished
+
+                        call ProposeBallMove                            ; proposed ball coordinates in hl
+
+                        ld ix, spritetable
+
+                        ld a, 0
+                        out (#fe), a
+
+                        call ReadKeys
+                        call CheckBatCollision
+
+                        ld a, 5
+                        out (#fe), a
+
+                        call CheckBrickCollision
+                        ld a, 6
+                        out (#fe), a
+
+                        call CheckYEdgeCollision
+                        call CheckXEdgeCollision
+
+                        ld a, 1
+                        out (#fe), a
+
+                        ld ix, spritetable
+                        call CheckLoseBall
+                        jp z, LoseLife
+
+                        call CommitBallMove
+                        jp InterruptFinished
+
+LoseLife
+                        call ResetBallBat
+                        jp InterruptFinished
+
 LevelComplete:
+                        xor a
+                        ld (gameinit), a
 
                         ld a, (currentlevel)
                         inc a
@@ -78,14 +97,6 @@ LevelComplete:
                         ld a, LEVELCOMPLETE_SCENE
                         ld (currentloop), a
                         jp SwitchMainLoop
-                        
-RestartLife:
-                        call ResetBallBat
-                        ld a, (lives)
-                        cp 0
-                        jr z, GameOver
-
-                        jp MainGameLoop
 
 StartLevel:
                         xor a                                           ; Stationary ball to start
@@ -102,6 +113,7 @@ StartLevel:
 
 GameOver:
                         xor a
+                        ld (gameinit), a
                         ld (currentlevel), a                    ; reset the level
 
                         ld a, GAMEOVER_SCENE                    ; Show the game over scene
@@ -114,7 +126,6 @@ ResetBallBat:
                         ld hl, INITIAL_BALL_COORDS
                         call UpdateSpriteXY
                         ld (proposedbally), hl
-                        ld (oldbally), hl
 
                         ld de, SPRITETABLE_SIZE
                         add ix, de
