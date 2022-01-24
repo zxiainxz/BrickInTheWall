@@ -18,7 +18,7 @@ GameLoopInitialise:
 
                         call LoadSprites                                ; Put the sprites this scene uses into the
                                                                         ; sprite table
-                        call DrawAllSprites                             ; Draw the sprites once so the interrupt
+                        ; call DrawAllSprites                             ; Draw the sprites once so the interrupt
                                                                         ; has something to erase                        
 
                         ld a, 1
@@ -29,18 +29,18 @@ GameLoopInitialise:
 MainGameLoop:
                         halt
                         ld a, (LevelBlockCount)
-                        cp 0
+                        and a
                         jp z, LevelComplete
 
                         ld a, (lives)
-                        cp 0
+                        and a
                         jr z, GameOver
 
                         jr MainGameLoop
 
 GameLoopDraw:
                         ld a, (needsdisplay)
-                        cp 0
+                        and a
                         call nz, UpdateLevel
                         xor a
                         ld (needsdisplay), a
@@ -49,7 +49,7 @@ GameLoopDraw:
 
 GameInterrupt:
                         ld a, (gameinit)
-                        cp 0
+                        and a
                         jp z, InterruptFinished
 
                         call ProposeBallMove                            ; proposed ball coordinates in hl
@@ -141,7 +141,7 @@ ResetBallBat:
 
 DrawLives:
                         ld a, (lives)
-                        cp 0
+                        and a
                         ret z
 
                         ld b, a
@@ -189,7 +189,7 @@ ProposeBallMove:
                         ld (oldbally), hl
 
                         ld a, (yballdir)               ; Get ball direction
-                        cp 0
+                        and a
                         jr z, ProposeBallMoveX
 
                         add l                           ; move ball in that direction
@@ -199,7 +199,7 @@ ProposeBallMove:
 
 ProposeBallMoveX:
                         ld a, (xballdir)
-                        cp 0
+                        and a
                         ret z
 
                         add h
@@ -301,7 +301,7 @@ Ball_HitX:
 ; inputs: hl - ball x, y
 CheckBatCollision:
                         ld a, (yballdir)
-                        cp 0
+                        and a
                         ret z
 
                         ld a, l                         ; Check if ball is near bat
@@ -372,7 +372,7 @@ CheckYEdgeCollision:
 CheckXEdgeCollision:
                         ld a, (ix+SPRITETABLE_X)
 
-                        cp 0
+                        and a
                         jr nz, CheckRightEdge
                         call Switch_XDir
                         jr Ball_HitX
@@ -449,7 +449,7 @@ Move_BatLeft:
                         ld hl, (ix+SPRITETABLE_Y)
                         ld a, h
 
-                        cp 0
+                        and a
                         jr z, Move_BatLeftDone
 
                         sub 3
@@ -458,7 +458,7 @@ Move_BatLeft:
                         call UpdateSpriteXY
 
                         ld a, (yballdir)
-                        cp 0
+                        and a
 
                         call z, MoveBallToBat
 Move_BatLeftDone:
@@ -481,7 +481,7 @@ Move_BatRight:
                         call UpdateSpriteXY
 
                         ld a, (yballdir)
-                        cp 0
+                        and a
 
                         call z, MoveBallToBat
 

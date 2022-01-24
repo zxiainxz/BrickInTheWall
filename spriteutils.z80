@@ -420,7 +420,7 @@ ClearNextRow:
 
                         dec de
 
-                         ex af, af'
+                        ex af, af'
 
                         call NextRow2
                         
@@ -553,7 +553,7 @@ ProcessNextSprite:
                         ld c, (ix+SPRITETABLE_FLAGS)
                         ld a, c
                         and 1
-                        cp 0
+                        and a
                         jr z, NextSprite
 
                         ld a, c                                         ; Restore flags
@@ -603,7 +603,7 @@ ProcessEraseNextSprite:
                         ld c, (ix+SPRITETABLE_FLAGS)
                         ld a, c
                         and 1
-                        cp 0
+                        and a
                         jr z, EraseNextSprite
 
                         ld a, c                                         ; Restore flags

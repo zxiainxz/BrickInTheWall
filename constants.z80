@@ -40,3 +40,6 @@ GAME_SCENE                      EQU 1
 GAMEOVER_SCENE                  EQU 2
 INTRO_SCENE                     EQU 3
 LEVELCOMPLETE_SCENE             EQU 4
+
+MAX_CELLS                       EQU 200
+DRAWLIST_CELL_SIZ               EQU 12

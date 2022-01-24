@@ -28,4 +28,4 @@ StartScreenLoop:
                         ld a, INTRO_SCENE
                         ld (currentloop), a                     ; Move to the game loop
 
-                        jr SwitchMainLoop
+                        jp SwitchMainLoop

@@ -276,7 +276,7 @@ DrawHorizontalMaskRow:
 
 DrawHorizontalMaskRowStart:
                         ld a, (hl)                              ; check the current brick
-                        cp 0
+                        and a
                         jr z, DrawHorizontalMaskRow1            ; empty, jump to draw empty
 
                         ld a, 255                               ; not empty, fill with 255
@@ -304,11 +304,11 @@ DrawHorizontalRowStart:
                         ld ix, hl                               ; point ix to hl
 
                         ld a, (hl)                              ; check current brick
-                        cp 0
+                        and a
                         jr nz, DrawHorizontalRow1               ; not empty, jump
 
                         ld a, (ix - 1)                          ; check previous brick
-                        cp 0
+                        and a
                         jr z, DrawHorizontalRow2                ; previous brick is empty, skip drawing border
 
                         ld a, 128                               ; not empty, draw the right border of the previous brick 
@@ -317,7 +317,7 @@ DrawHorizontalRow2:
                         inc de
 
                         ld a, (ix + 1)                          ; check the next brick
-                        cp 0
+                        and a
                         jr z, DrawHorizontalRow3                ; empty, skip the border
 
                         ld a, 1                                 ; not empty, draw the left border of the next brick
@@ -353,11 +353,11 @@ DrawUpperDividerRowStart:
                         ld ix, hl
 
                         ld a, (hl)                              ; Check current brick
-                        cp 0
+                        and a
                         jr nz, DrawUpperDividerRow1             ; Not empty, jump
 
                         ld a, (ix + 16)                         ; Check the next row
-                        cp 0
+                        and a
                         jr z, DrawUpperDividerRow2              ; empty, so jump to draw the space
 
                         ld a, 255                               ; draw the upper border of the next row
@@ -370,7 +370,7 @@ DrawUpperDividerRowStart:
 
 DrawUpperDividerRow2:
                         ld a, (ix - 1)                          ; current brick is empty, does it need a border
-                        cp 0
+                        and a
                         jr z, DrawUpperDividerRow21             ; previous is empty, skip drawing border
 
                         ld a, 128                               ; ight border of previous brick
@@ -379,7 +379,7 @@ DrawUpperDividerRow21:
                         inc de
 
                         ld a, (ix + 1)                          ; check next brick
-                        cp 0
+                        and a
                         jr z, DrawUpperDividerRow22             ; next is empty, skip drawing border
 
                         ld a, 1                                 ; left border of next brick
@@ -416,11 +416,11 @@ DrawLowerDividerRowStart:
                         ld ix, hl
 
                         ld a, (hl)                              ; Check current brick
-                        cp 0
+                        and a
                         jr nz, DrawLowerDividerRow1             ; Not empty, jump
 
                         ld a, (ix - 16)                         ; empty so check the previous row
-                        cp 0
+                        and a
                         jr z, DrawLowerDividerRow2              ; previous row empty so jump to skip drawing border
 
                         ld a, 255                               ; draw two chars of 255
@@ -433,7 +433,7 @@ DrawLowerDividerRowStart:
 
 DrawLowerDividerRow2:
                         ld a, (ix - 1)                          ; check previous brick
-                        cp 0
+                        and a
                         jr z, DrawLowerDividerRow21             ; empty, skip drawing border
 
                         ld a, 128                               ; right border of previous brick
@@ -442,7 +442,7 @@ DrawLowerDividerRow21:
                         inc de
 
                         ld a, (ix + 1)                          ; check next brick
-                        cp 0
+                        and a
                         jr z, DrawLowerDividerRow22             ; empty, skip drawing border
 
                         ld a, 1                                 ; left hand border
@@ -476,7 +476,7 @@ ColourLevel:
                         ld bc, 255
 ColourNextBlock:
                         ld a, (hl)
-                        cp 0
+                        and a
                         jr nz, DontChangeColour
                         ld a, 56
 DontChangeColour:
@@ -508,7 +508,7 @@ CheckRow:
 
 CheckBrick:
                         ld a, (iy)
-                        cp 0                                            ; Check an empty slot
+                        and a                                            ; Check an empty slot
                         jr z, CheckNextBrick
 
                         call CheckCollision8v16x8v8                     ; Check if the ball has entered the 8x8 

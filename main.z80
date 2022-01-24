@@ -24,7 +24,7 @@ Code_Start:             EQU 0x7FFD
                         include "screenutils.z80"
                         include "spriteutils.z80"
                         include "startscreen.z80"
-
+                        
 Main_Start:
 ; LOGPOINT Started
                         xor a                                           ; clear a to 0 (black)
@@ -104,8 +104,6 @@ Interrupt:
 
                         xor a                                           ; clear a to 0 (black)
                         out (#fe), a                                    ; set border to 0
-
-                        call EraseAllSprites                            ; Remove the old sprites
                                                                         ; FIXME: Might be nice to cache this for speed
                         ld de, interruptdraw                            ; load the interrupt draw table
                         call GetMethod
@@ -119,10 +117,7 @@ Interrupt:
 
 InterruptDrawFinished:
 
-                        ld a, 3
-                        out (#fe), a
-
-                        call DrawAllSprites                             ; Draw the new sprites
+                        call EraseAllSprites                            ; Remove the old sprites
 
                         ld a, 4
                         out (#fe), a
@@ -137,6 +132,15 @@ InterruptDrawFinished:
                         jp (hl)
                         
 InterruptFinished:
+                        ld a, 3
+                        out (#fe), a
+
+                        call DrawAllSprites                             ; Draw the new sprites
+
+                        ld a, 6
+                        out (#fe), a
+
+
                         pop iy                                          ; pop it all back off the stack
                         pop hl
                         pop de

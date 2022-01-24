@@ -89,4 +89,23 @@ gameover_string:        byte "GAME OVER\0"
 level_string            byte "LEVEL \0\0\0"
 level_complete_string:  byte "LEVEL CLEAR\0"
 
+NumberCells:                    db 0
+PrevCell:                       db 0
+CellSP:                         dw 0                            // Move this in place
+
+                                org $b000 - 2
+DrawListNext:                   dw DrawList
+
+DrawList:                       ds MAX_CELLS * DRAWLIST_CELL_SIZ
+
+                                org $c000
+UsedCellMap:                    ds 32 * 24
+
+                                org $d000 - 2
+UsedCellNext:                   dw UsedCellList
+UsedCellList:                   ds MAX_CELLS * 2
+
+                                org $e000
+PrevCellList:                   ds MAX_CELLS * 2
+
                         include "anarchist-font.z80"
