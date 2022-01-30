@@ -18,8 +18,10 @@ GameLoopInitialise:
 
                         call LoadSprites                                ; Put the sprites this scene uses into the
                                                                         ; sprite table
-                        ; call DrawAllSprites                             ; Draw the sprites once so the interrupt
+                        di
+                        call DrawAllSprites                             ; Draw the sprites once so the interrupt
                                                                         ; has something to erase                        
+                        ei
 
                         ld a, 1
                         ld (gameinit), a
@@ -38,13 +40,44 @@ MainGameLoop:
 
                         jr MainGameLoop
 
-GameLoopDraw:
-                        ld a, (needsdisplay)
-                        and a
-                        call nz, UpdateLevel
+GameOver:
                         xor a
-                        ld (needsdisplay), a
+                        ld (gameinit), a
+                        ld (currentlevel), a                    ; reset the level
 
+                        ld a, GAMEOVER_SCENE                    ; Show the game over scene
+                        ld (currentloop), a
+                        jp SwitchMainLoop
+
+GameLoopDraw:
+                        push ix
+                        ld ix, UpdateBricks
+                        ld b, 5
+GLDrawNextBrick:
+                        ld a, (ix+1)
+                        and a
+                        jp z, GLDrawFinished
+
+                        ld de, (ix+UPDATEBRICKS_ADDR)
+                        ld hl, (ix+UPDATEBRICKS_SPRITE)
+
+                        call DrawBrick
+
+                        ld de, (ix+UPDATEBRICKS_ATTRADDR)
+                        ld a, 56
+                        ld (de), a
+                        inc de
+                        ld (de), a
+
+                        ld (ix+UPDATEBRICKS_ADDR), 0x00
+                        ld (ix+UPDATEBRICKS_ADDR+1), 0x00
+                        ld de, UPDATEBRICKS_SIZE
+                        add ix, de
+
+                        djnz GLDrawNextBrick
+
+GLDrawFinished:
+                        pop ix
                         jp InterruptDrawFinished
 
 GameInterrupt:
@@ -56,11 +89,14 @@ GameInterrupt:
 
                         ld ix, spritetable
 
+                        call CheckLoseBall
+                        jp z, LoseLife
+
                         ld a, 0
                         out (#fe), a
 
-                        call ReadKeys
                         call CheckBatCollision
+                        call ReadKeys
 
                         ld a, 5
                         out (#fe), a
@@ -74,10 +110,6 @@ GameInterrupt:
 
                         ld a, 1
                         out (#fe), a
-
-                        ld ix, spritetable
-                        call CheckLoseBall
-                        jp z, LoseLife
 
                         call CommitBallMove
                         jp InterruptFinished
@@ -110,15 +142,6 @@ StartLevel:
                         call DisplayLevel
 
                         ret
-
-GameOver:
-                        xor a
-                        ld (gameinit), a
-                        ld (currentlevel), a                    ; reset the level
-
-                        ld a, GAMEOVER_SCENE                    ; Show the game over scene
-                        ld (currentloop), a
-                        jp SwitchMainLoop
 
 ResetBallBat:
                         ld ix, spritetable
@@ -171,7 +194,9 @@ DrawLife:
                         pop af
                         pop de
 
+                        di
                         call DrawSprite16x8PreShiftCharRow
+                        ei
                         pop hl
 
                         ld d, 17
@@ -271,43 +296,17 @@ LoadSprites:
 
                         ret
 
-; The ball was hit on the y axis and so it needs to be moved back to the old position moved again
-; Outputs: hl - new proposed ball x,y
-Ball_HitY:
-                        ld a, (oldbally)
-
-                        ld bc, (yballdir)
-                        add c
-
-                        ld (proposedbally), a
-
-                        ld hl, (proposedbally)
-                        ret
-
-; The ball was hit on the x axis and so it needs to be moved back to the old position moved again
-; Outputs: hl - new proposed ball x,y
-Ball_HitX:
-                        ld a, (oldballx)
-
-                        ld bc, (xballdir)
-                        add c
-
-                        ld (proposedballx), a
-
-                        ld hl, (proposedbally)
-                        ret
-
 ; Checks if the bat and ball have collided
 ; inputs: hl - ball x, y
 CheckBatCollision:
                         ld a, (yballdir)
-                        and a
-                        ret z
+                        cp 1
+                        ret nz
 
                         ld a, l                         ; Check if ball is near bat
-                        cp 177                          ; this is when the bottom of the ball crosses the bat line
+                        cp 176                          ; this is when the bottom of the ball crosses the bat line
 
-                        ret c                           ; return if < 177, ball isn't near bat
+                        ret c                           ; return if < 176, ball isn't near bat
 
                         push ix
                         ld de, SPRITETABLE_SIZE
@@ -348,6 +347,7 @@ CheckBatCollision:
 GoLeft:
                         ld a, -1
                         ld (xballdir), a
+                        call Ball_HitX
 
                         call Switch_YDir
                         jr Ball_HitY
@@ -355,9 +355,36 @@ GoLeft:
 GoRight:
                         ld a, 1
                         ld (xballdir), a
-
+                        call Ball_HitX
+                        
                         call Switch_YDir
                         jr Ball_HitY
+
+; The ball was hit on the y axis and so it needs to be moved back to the old position moved again
+; Outputs: hl - new proposed ball x,y
+Ball_HitY:
+                        ld a, (oldbally)
+
+                        ld bc, (yballdir)
+                        add c
+
+                        ld (proposedbally), a
+
+                        ld hl, (proposedbally)
+                        ret
+
+; The ball was hit on the x axis and so it needs to be moved back to the old position moved again
+; Outputs: hl - new proposed ball x,y
+Ball_HitX:
+                        ld a, (oldballx)
+
+                        ld bc, (xballdir)
+                        add c
+
+                        ld (proposedballx), a
+
+                        ld hl, (proposedbally)
+                        ret
 
 ; input: ix - set to spritetable
 CheckYEdgeCollision:
@@ -383,12 +410,6 @@ CheckRightEdge:
 
                         call Switch_XDir
                         jr Ball_HitX
-                        ret
-
-Move_BallY:
-                        ret
-
-Move_BallX:
                         ret
 
 Switch_YDir:

@@ -110,13 +110,13 @@ Brick2LevelMap:
 ; Resets all the bricks in the level to on
 ResetLevel:
                         push hl
-                        ld hl, LevelMap                         ; point hl to the brick map
+                        ld hl, LevelMap - 16                    ; point hl to the brick map
+                        ld de, LevelMap - 15
                         xor a                                 
-                        ld b, 256                               ; 256 bytes for map (could use bits if short on mem)
+                        ld bc, 0x10F
 ResetNextBrick                        
                         ld (hl), a                              ; mark brick inactive
-                        inc hl                                  ; next brick
-                        djnz ResetNextBrick
+                        ldir
                         pop hl
                         ret
 
@@ -146,327 +146,197 @@ LoadNextBrick:
 
                         inc ix
                         djnz LoadNextBrick
+
+                        call CalculateBorder
                         ret
 
 SetBrickColour:
                         ld a, (ix + 1)
-                        or 7
+                        sla a
+                        sla a
+                        set 4, a                                     ; Set bit 4 to indicate a brick
                         ld c, a
                         inc ix
                         inc ix
                         jr LoadNextBrick                             ; Don't count colour instructions
                                                                      ; towards the number of blocks so skip djnz
 
+CalculateBorder:
+                        ld hl, LevelMap - 16
+                        ld c, 0
+
+CalculateBorderNextRow:
+                        ld b, 0
+
+CalculateBorderNextBlock:
+                        ld a, (hl)
+
+                        call CheckLeft
+                        call CheckRight
+                        call CheckAbove
+                        call CheckBelow
+
+CalculateBorderMoveToNextBlock
+                        inc hl
+
+                        inc b
+                        ld a, b
+                        cp 16
+                        jr nz, CalculateBorderNextBlock
+
+                        inc c
+                        ld a, c
+                        cp 17
+                        jr nz, CalculateBorderNextRow
+
+                        ret
+
+CheckLeft:
+                        ld a, b
+                        and a
+                        ret z
+
+                        ld ix, hl
+                        ld a, (ix - 1)
+                        and 16
+                        ret z
+
+                        ld a, (hl)
+                        set 3, a
+                        ld (hl), a
+
+                        ret
+CheckRight:
+                        ld a, b
+                        cp 15
+                        ret z
+
+                        ld ix, hl
+                        ld a, (ix + 1)
+                        and 16
+                        ret z
+
+                        ld a, (hl)
+                        set 2, a
+                        ld (hl), a
+                        ret
+CheckAbove:
+                        ld a, c
+                        and a
+                        ret z
+
+                        ld ix, hl
+                        ld a, (ix - 16)
+                        and 16
+                        ret z
+
+                        ld a, (hl)
+                        set 1, a
+                        ld (hl), a
+                        ret
+CheckBelow:
+                        ld a, c
+                        cp 16
+                        ret z
+
+                        ld ix, hl
+                        ld a, (ix + 16)
+                        and 16
+                        ret z
+
+                        ld a, (hl)
+                        set 0, a
+                        ld (hl), a
+                        ret
+
 DisplayLevel:
-                        ld de, 0x4760                                ; 0, 31
-                        ld hl, LevelMap
-                        ld iy, Brick_Data
+                        ld de, 0x4060                                ; 0, 31
+                        ld hl, LevelMap-16
+                        ld b, 16
 
-                        call DrawHorizontalMaskRow                  ; draw the top of the outline
-
-                        ld de, 0x4080                                   ; 0, 32
-
-                        call DrawMaskedRow                          ; draw 15 rows
-                        call DrawMaskedRow
-                        call DrawMaskedRow
-                        call DrawMaskedRow
-
-                        call DrawMaskedRow
-                        call DrawMaskedRow
-                        call DrawMaskedRow
-                        call DrawMaskedRow
-
-                        call DrawMaskedRow
-                        call DrawMaskedRow
-                        call DrawMaskedRow
-                        call DrawMaskedRow
-
-                        call DrawMaskedRow
-                        call DrawMaskedRow
-                        call DrawMaskedRow
+DisplayNextRow:
+                        call DrawRowOfBricks
+                        call NextCharRow
+                        djnz DisplayNextRow
 
                         call ColourLevel
                         ret
 
-; Update a level row. Need to draw the 8 pixels of the row and one above, and one below
-; Inputs: - a the pixel of the brick row to be updated - 1
-; Trashes: af, hl, de, iy
-UpdateLevel:
-                        ld h, 0
-                        ld l, a
+DrawRowOfBricks:
+                        push bc, de
+                        ld b, 16
 
-                        call scadd                      ; put screen address into de
-
-                        ld a, l                         ; Check if this is the row before the first brick
-                        cp 31
-                        jr z, UpdateTopLine             ; if it is, jump
-
-                        ld iy, Brick_Data + 14          ; the line before the row needs the 7th row of the brick sprite
-
-                        sub 7                           ; move to the y pixel of the previous row
-                        ld l, a
-                        call Pixel2LevelMap             ; hl points to the first brick of the previous row
-
-                        call DrawUpperDividerRow        ; draw the bottom row of the brick
-                        call NextRow2                   ; move to next character row
-                        jr UpdateLevel1
-
-UpdateTopLine:
-                        ld hl, LevelMap                 ; point hl to start of levelmap
-                        call DrawHorizontalMaskRow      ; draw the top border
-                        ld de, 0x4080                   ; 0, 32
-
-UpdateLevel1:
-                        ld iy, Brick_Data               ; point iy at start of brick data
-                        call DrawMaskedRow              ; draw a whole row
-
-                        call DrawLowerDividerRow        ; draw the top line of the next row
-
-                        call ColourLevel                ; fill in the colour
-                        ret
-
-DrawMaskedRow:
-                        push iy
-                        call DrawLowerDividerRow        ; draw the first row of the brick
-                        inc iy                          ; move to next row of sprite data
-                        inc iy
-                        inc d                           ; move to the next pixel row
-
-                        call DrawHorizontalRow          ; draw the next 6 rows
-                        inc iy
-                        inc iy
-
-                        inc d
-                        call DrawHorizontalRow
-                        inc iy
-                        inc iy
-
-                        inc d
-                        call DrawHorizontalRow
-                        inc iy
-                        inc iy
-
-                        inc d
-                        call DrawHorizontalRow
-                        inc iy
-                        inc iy
-
-                        inc d
-                        call DrawHorizontalRow
-                        inc iy
-                        inc iy
-
-                        inc d
-                        call DrawHorizontalRow
-                        inc iy
-                        inc iy
-
-                        inc d
-                        call DrawUpperDividerRow            ; draw the bottom line
-                        call NextRow2                       ; move de to the next char row
-                        pop iy
-
-                        ret
-
-; Draw the top line of the border
-DrawHorizontalMaskRow:
-                        push de, hl
-
-                        ld b, 16                                ; draw 16 bricks in the row
-
-DrawHorizontalMaskRowStart:
-                        ld a, (hl)                              ; check the current brick
-                        and a
-                        jr z, DrawHorizontalMaskRow1            ; empty, jump to draw empty
-
-                        ld a, 255                               ; not empty, fill with 255
-
-DrawHorizontalMaskRow1:
-                        ld (de), a                              ; draw next two chars
-                        inc de
-                        ld (de), a
-                        inc de
-
-DrawHorizontalMaskRowNext:
-                        inc hl                                  ; move to next brick
-                        djnz DrawHorizontalMaskRowStart
-
-                        pop hl, de
-                        ret
-
-; Draw a middle line of the brick
-DrawHorizontalRow:
-                        push de, hl
-
-                        ld b, 16                                ; draw 16 bricks
-
-DrawHorizontalRowStart:
-                        ld ix, hl                               ; point ix to hl
-
-                        ld a, (hl)                              ; check current brick
-                        and a
-                        jr nz, DrawHorizontalRow1               ; not empty, jump
-
-                        ld a, (ix - 1)                          ; check previous brick
-                        and a
-                        jr z, DrawHorizontalRow2                ; previous brick is empty, skip drawing border
-
-                        ld a, 128                               ; not empty, draw the right border of the previous brick 
-DrawHorizontalRow2:
-                        ld (de), a                              ; draw first half of space
-                        inc de
-
-                        ld a, (ix + 1)                          ; check the next brick
-                        and a
-                        jr z, DrawHorizontalRow3                ; empty, skip the border
-
-                        ld a, 1                                 ; not empty, draw the left border of the next brick
-DrawHorizontalRow3:
-                        ld (de), a                              ; draw second half of space
-                        inc de
-
-                        jr DrawHorizontalRowNext                ; go to next brick
-
-DrawHorizontalRow1:
-                        ld a, (iy)                              ; current brick not empty, draw the brick sprite
-                        ld (de), a
-                        inc de
-
-                        ld a, (iy + 1)
-                        ld (de), a
-                        inc de
-
-DrawHorizontalRowNext:
-                        inc hl                                  ; next brick
-                        djnz DrawHorizontalRowStart
-
-                        pop hl, de
-                        ret
-
-; Draw the bottom of the brick. Don't ask why it's called upper divider FIXME: RENAME IT
-DrawUpperDividerRow:
+DrawNextBrick:
                         push de
 
-                        ld b, 16                                ; Draw 16 bricks
-
-DrawUpperDividerRowStart:
-                        ld ix, hl
-
-                        ld a, (hl)                              ; Check current brick
-                        and a
-                        jr nz, DrawUpperDividerRow1             ; Not empty, jump
-
-                        ld a, (ix + 16)                         ; Check the next row
-                        and a
-                        jr z, DrawUpperDividerRow2              ; empty, so jump to draw the space
-
-                        ld a, 255                               ; draw the upper border of the next row
-                        ld (de), a
-                        inc de
-                        ld (de), a
-                        inc de
-
-                        jr DrawUpperDividerRowNext              ; Next brick
-
-DrawUpperDividerRow2:
-                        ld a, (ix - 1)                          ; current brick is empty, does it need a border
-                        and a
-                        jr z, DrawUpperDividerRow21             ; previous is empty, skip drawing border
-
-                        ld a, 128                               ; ight border of previous brick
-DrawUpperDividerRow21:
-                        ld (de), a                              ; draw first half of brick space
-                        inc de
-
-                        ld a, (ix + 1)                          ; check next brick
-                        and a
-                        jr z, DrawUpperDividerRow22             ; next is empty, skip drawing border
-
-                        ld a, 1                                 ; left border of next brick
-
-DrawUpperDividerRow22:
-                        ld (de), a                              ; draw second half of the brick
-                        inc de
-
-                        jr DrawUpperDividerRowNext              ; next brick
-
-DrawUpperDividerRow1:
-                        ld a, (iy)                              ; current brick not empty, so draw sprite
-                        ld (de), a
-                        inc de
-
-                        ld a, (iy + 1)
-                        ld (de), a
-                        inc de
-
-DrawUpperDividerRowNext:                                        
+                        ld a, (hl)
+                        cp 16
+                        jr c, DLRDB1
+                        ld a, 16
+DLRDB1:
                         inc hl
-                        djnz DrawUpperDividerRowStart           ; move to the next brick
+
+                        push de
+
+                        exx
+
+                        ld bc, 0x0816
+
+                        ld h, 0
+                        ld l, a
+                        add hl, hl
+                        ld de, brickTable
+                        add hl, de
+
+                        ld a, (hl)
+                        inc hl
+                        ld h, (hl)
+                        ld l, a
 
                         pop de
+
+DrawNextBrickLine:
+                        ldi
+                        ldi
+
+                        dec de                           ; FIXME: Zigzag data?
+                        dec de
+                        inc d
+
+                        djnz DrawNextBrickLine
+
+                        push de
+                        exx
+                        pop de
+                        pop de
+                        inc de
+                        inc de
+
+                        djnz DrawNextBrick
+                        pop de, bc
                         ret
 
-; Draw the top line of the row // FIXME: Rename it to something less stupid
-DrawLowerDividerRow:
-                        push de, hl
-
-                        ld b, 16                                ; draw row of 16 bricks
-
-DrawLowerDividerRowStart:
-                        ld ix, hl
-
-                        ld a, (hl)                              ; Check current brick
-                        and a
-                        jr nz, DrawLowerDividerRow1             ; Not empty, jump
-
-                        ld a, (ix - 16)                         ; empty so check the previous row
-                        and a
-                        jr z, DrawLowerDividerRow2              ; previous row empty so jump to skip drawing border
-
-                        ld a, 255                               ; draw two chars of 255
+; de - screen address
+; hl - sprite address
+DrawBrick:
+                        ld bc, 0x0816
+DrawBrick1:
+                        ld a, (hl)
                         ld (de), a
-                        inc de
-                        ld (de), a
-                        inc de
-
-                        jr DrawLowerDividerRowNext              ; next brick
-
-DrawLowerDividerRow2:
-                        ld a, (ix - 1)                          ; check previous brick
-                        and a
-                        jr z, DrawLowerDividerRow21             ; empty, skip drawing border
-
-                        ld a, 128                               ; right border of previous brick
-DrawLowerDividerRow21:
-                        ld (de), a                              ; draw first half of space
-                        inc de
-
-                        ld a, (ix + 1)                          ; check next brick
-                        and a
-                        jr z, DrawLowerDividerRow22             ; empty, skip drawing border
-
-                        ld a, 1                                 ; left hand border
-
-DrawLowerDividerRow22:
-                        ld (de), a                              ; draw second half of space
-                        inc de
-
-                        jr DrawLowerDividerRowNext              ; next brick
-
-DrawLowerDividerRow1:
-                        ld a, (iy)                              ; brick is not empty, draw sprite
-                        ld (de), a
-                        inc de
-
-                        ld a, (iy + 1)
-                        ld (de), a
-                        inc de
-
-DrawLowerDividerRowNext:
+                        inc e
                         inc hl
-                        djnz DrawLowerDividerRowStart           ; go to next brick
+                        ld a, (hl)
+                        ld (de), a
+                        dec e
+                        inc d
+                        inc hl
+                        ; ldi
+                        ; ldi
+                        ; inc d
+                        ; dec de
+                        ; dec de
 
-                        pop hl, de
+                        djnz DrawBrick1
                         ret
 
 ColourLevel:
@@ -476,10 +346,15 @@ ColourLevel:
                         ld bc, 255
 ColourNextBlock:
                         ld a, (hl)
-                        and a
+                        bit 4, a
                         jr nz, DontChangeColour
                         ld a, 56
+                        jr ColourBlock
 DontChangeColour:
+                        srl a
+                        srl a
+                        or 7
+ColourBlock:
                         ld (de), a
                         inc de
                         ld (de), a
@@ -489,47 +364,92 @@ DontChangeColour:
                         djnz ColourNextBlock
                         ret
 
-; CheckBrickCollision - Check if the ball has collided with any of the bricks
-; Inputs: hl - x, y of the ball
-; Outputs: z - set to indicate collision
 CheckBrickCollision:
+                        push hl
+
+                        srl l
+                        srl l
+                        srl l
+
                         ld a, l
-                        cp 168                                           ; bottom of possible bricks
-                        ret nc
+                        sub 2
+                        cp 17
 
-                        cp 23                                          ; top of possible bricks
-                        ret c
+                        jr c, CBC                       
+                        pop hl
+                        ret
 
-                        ld iy, LevelMap                                 ; point to the LevelMap
-                        ld c, 32                                        ; y = 0
+CBC:
+                        ld l, a
 
-CheckRow:
-                        ld b, 0                                         ; x = 0
+                        ld a, (yballdir)
+                        cp 1
+                        jr z, CBC1
+                        dec l
 
-CheckBrick:
+CBC1:
+                        sla l
+                        sla l
+                        sla l
+                        sla l
+
+                        ld d, 0
+                        ld e, l
+
+                        ld c, l
+                        srl c
+                        ld a, c
+                        add a, 24
+                        ld c, a
+
+                        pop hl
+
+                        ld iy, LevelMap - 16
+                        add iy, de
+
+                        exx
+                        ld c, 0
+                        exx
+
+CBCNextRow:
+                        ld b, 0
+CBCNextBrick:
                         ld a, (iy)
-                        and a                                            ; Check an empty slot
-                        jr z, CheckNextBrick
+                        and 16
+                        jr z, CBCMoveToNextBrick
 
                         call CheckCollision8v16x8v8                     ; Check if the ball has entered the 8x8 
 
                         jr z, BrickCollision                            ; check the fine grained collisions
-CheckNextBrick:
-                        inc iy                                          ; move to the next brick
+
+CBCMoveToNextBrick:
+                        inc iy
+
+                        exx
+                        inc c
+                        ld a, c
+                        exx
+
+                        cp 32
+                        ret z
 
                         ld a, b
                         add 16
                         ld b, a
-                        cp 256
-                        jr nz, CheckBrick
-                                                                        ; end of row
-                        ld a, c                                         ; check not end of bricks
+                        cp 256                          ; and a? test for 0
+                        jr nz, CBCNextBrick
+
+                        ld a, c
                         add 8
-                        ld c, a
                         cp 160
-                        jr nz, CheckRow
+                        ret z
+
+                        ld c, a
+
+                        jr CBCNextRow
 
                         ret
+
 
 ; inputs: iy - the collision brick
 ;         bc - x,y of the colllision brick
@@ -539,7 +459,7 @@ BrickCollision:
                         call CheckFineGrainCollision            ; check fine grained collision
                         pop bc
 
-                        jr nz, CheckNextBrick                       ; check if we actually hit before removing brick
+                        jr nz, CBCMoveToNextBrick                       ; check if we actually hit before removing brick
 
                         call RemoveBrick                        ; remove the brick
 
@@ -619,13 +539,89 @@ RemoveBrick
                         ; iy: brick in levelmap
                         ; hl: ball x,y
 
-                        xor a
-                        ld (iy), a                              ; erase brick
+                        push bc, de, ix
 
-                        ld a, c
-                        dec a
-                        ld (needsdisplay), a
+                        res 0, (iy-16)
+                        res 1, (iy+16)
+                        res 2, (iy-1)
+                        res 3, (iy+1)
+                        res 4, (iy)                             ; Erase the brick
 
+                        ld hl, bc
+                        ld ix, UpdateBricks
+                        ld a, (iy)
+                        and 15
+
+                        call AddUpdateBrick
+
+                        ld a, (iy-16)
+                        and 16
+                        jr nz, RB1
+
+                        push hl
+
+                        ld a, l
+                        sub 8
+                        ld l, a
+
+                        ld a, (iy-16)
+                        and 15
+                        call AddUpdateBrick
+
+                        pop hl
+
+RB1:
+                        ld a, (iy+16)
+                        and 16
+                        jr nz, RB2
+
+                        push hl
+
+                        ld a, l
+                        add 8
+                        ld l, a
+
+                        ld a, (iy+16)
+                        and 15
+                        call AddUpdateBrick
+
+                        pop hl
+
+RB2:
+                        ld a, (iy-1)
+                        and 16
+                        jr nz, RB3
+
+                        push hl
+
+                        ld a, h
+                        sub 16
+                        ld h, a
+
+                        ld a, (iy-1)
+                        and 15
+                        call AddUpdateBrick
+
+                        pop hl
+
+RB3:
+                        ld a, (iy+1)
+                        and 16
+                        jr nz, RB4
+
+                        push hl
+
+                        ld a, h
+                        add 16
+                        ld h, a
+
+                        ld a, (iy+1)
+                        and 15
+                        call AddUpdateBrick
+
+                        pop hl
+
+RB4:
                         call AddBrickScore
 
                         ld a, (bonusadder)                      ; increase the score bonus for every brick hit
@@ -636,4 +632,42 @@ RemoveBrick
                         dec a
                         ld (LevelBlockCount), a
 
+                        pop ix, de, bc
+                        ret
+
+; a - brick code
+; hl - brick pixel
+; ix - UpdateBrick entry
+AddUpdateBrick:
+                        call scadd
+                        ld (ix+UPDATEBRICKS_ADDR), de
+
+                        call pixelattradd
+                        ld (ix+UPDATEBRICKS_ATTRADDR), de
+
+                        call GetBrickSprite
+                        ld (ix+UPDATEBRICKS_SPRITE), de
+
+                        ld de, UPDATEBRICKS_SIZE
+                        add ix, de
+
+                        ret
+
+; a - brick code
+; returns: de - sprite address
+GetBrickSprite:
+                        push hl
+                        ld h, 0
+                        ld l, a
+                        add hl, hl
+                        ld de, brickTable
+                        add hl, de
+
+                        ld a, (hl)
+                        inc hl
+                        ld h, (hl)
+                        ld l, a
+
+                        ex de, hl
+                        pop hl
                         ret

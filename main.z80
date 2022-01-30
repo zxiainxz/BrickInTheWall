@@ -104,6 +104,12 @@ Interrupt:
 
                         xor a                                           ; clear a to 0 (black)
                         out (#fe), a                                    ; set border to 0
+
+                        call EraseAllSprites
+
+                        ld a, 1
+                        out (#fe), a
+
                                                                         ; FIXME: Might be nice to cache this for speed
                         ld de, interruptdraw                            ; load the interrupt draw table
                         call GetMethod
@@ -116,8 +122,7 @@ Interrupt:
                         jp (hl)                                         ; jump to it
 
 InterruptDrawFinished:
-
-                        call EraseAllSprites                            ; Remove the old sprites
+                        call DrawAllSprites                            ; Remove the old sprites
 
                         ld a, 4
                         out (#fe), a
@@ -132,10 +137,17 @@ InterruptDrawFinished:
                         jp (hl)
                         
 InterruptFinished:
+                        ld a, 0
+                        out (#fe), a
+                        ld b, 255
+InterruptWait:
+                        djnz InterruptWait
+
                         ld a, 3
                         out (#fe), a
 
-                        call DrawAllSprites                             ; Draw the new sprites
+                        ; call DrawAllSprites                             ; Draw the new sprites
+                        
 
                         ld a, 6
                         out (#fe), a

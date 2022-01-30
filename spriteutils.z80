@@ -72,6 +72,7 @@ ShiftLeft1:
 ; hl - sprite table
 ; de - screen address
 ; a - x coord
+; call with interrupts disabled
 DrawSprite8x8PreShift:
                         push af, bc, de, hl, ix
                         ld (DrawSprite8x8PreShiftDone + 1), sp
