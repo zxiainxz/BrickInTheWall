@@ -51,6 +51,8 @@ brickoutlineDataTopLeftRight: db 255, 255, 128, 1, 128, 1, 128, 1, 128, 1, 128, 
 brickoutlineDataBottomLeftRight: db 128, 1, 128, 1, 128, 1, 128, 1, 128, 1, 128, 1, 128, 1, 255, 255 ; 13
 brickoutlineDataTopBottomLeftRight: db 255, 255, 128, 1, 128, 1, 128, 1, 128, 1, 128, 1, 128, 1, 255, 255 ; 15
 
+bg116x16Data0: db 128, 1, 96, 6, 28, 56, 3, 192, 32, 4, 64, 2, 1, 128, 2, 64, 2, 64, 1, 128, 64, 2, 32, 4, 3, 192, 28, 56, 96, 6, 128, 1
+
 ; Level store
 ; 16*rows*3
 RowColours:             db 8, 16, 24, 32, 48
@@ -61,18 +63,39 @@ LevelMap:               block 256
 LevelIterators:         dw NULL, NULL, NULL
 
 UPDATEBRICKS_SIZE       EQU 6
-UPDATEBRICKS_ADDR       EQU 0
-UPDATEBRICKS_SPRITE     EQU 2
-UPDATEBRICKS_ATTRADDR   EQU 4
+UPDATEBRICKS_ADDR       EQU 0               ; screen address
+UPDATEBRICKS_SPRITE     EQU 2               ; sprite address
+UPDATEBRICKS_ATTRADDR   EQU 4               ; attr address
 UpdateBricks:           block UPDATEBRICKS_SIZE * 5 + 2, 0  ; Enough for 5 blocks + 16bit null termination
+
+UPDATECELL_SIZE         EQU 13
+UPDATECELL_ADDR         EQU 0
+UPDATECELL_DATA         EQU 2
+UPDATECELL_ATTRADDR     EQU 10
+UPDATECELL_ATTR         EQU 12
+
+; Enough space for 24 cells, plus a 16 bit null termination
+; Current max usage would be:
+; 4 cells for where the ball was
+; 4 cells for where the ball is
+; 3 cells for where the bat was
+; 3 cells for where the bat is
+; 10 cells for 5 bricks
+; Things like multi-ball or bullets would require this to be increased
+UpdateCellList:         block UPDATECELL_SIZE * 24 + 2, 0 ; 
 
 ; variables
 yballdir:               db 0
 xballdir:               db 0
+
 oldbally:               db 0
 oldballx:               db 0
 proposedbally:          db 0
 proposedballx:          db 0
+
+batvelocitydelta:       dw 0
+batvelocitytarget:      db 0
+batvelocity:            dw 0
 
 needsdisplay:           db 0
 tmpx:                   db 0                                    ; Used by SpriteUtils to store x coord temporarily. IS IT?
@@ -92,23 +115,23 @@ LEVELDATA_DATA          EQU 3
 ; Flags: bit 1 - active
 ;        bit 2 - size (0 - 8x8, 1 - 16x8)
 SPRITETABLE_FLAGS       EQU 0
-SPRITETABLE_Y           EQU 1
-SPRITETABLE_X           EQU 2
-SPRITETABLE_OLD_SCADD   EQU 3
-SPRITETABLE_PRESHIFT    EQU 5
-SPRITETABLE_DATA        EQU 7
-SPRITETABLE_SCADD       EQU 9
-SPRITETABLE_OLD_DATA    EQU 11
-SPRITETABLE_OLD_X       EQU 13
-SPRITETABLE_SIZE        EQU 14
+SPRITETABLE_Y           EQU 1                       ; 8bit y
+SPRITETABLE_X           EQU 2                       ; 8bit x
+SPRITETABLE_OLD_SCADD   EQU 3                       ; where the old sprite was drawn
+SPRITETABLE_PRESHIFT    EQU 5                       ; data table
+SPRITETABLE_DATA        EQU 7                       ; current sprite shifted data
+SPRITETABLE_SCADD       EQU 9                       ; where the new sprite will be drawn
+SPRITETABLE_OLD_DATA    EQU 11                      ; old sprite shifted data
+SPRITETABLE_OLD_X       EQU 13                      ; old 8bit x - should change to shift offset
+SPRITETABLE_Y16         EQU 14                      ; 16bit y - high byte is pixel coord, low is fractional
+SPRITETABLE_X16         EQU 16                      ; 16bit x
+SPRITETABLE_SIZE        EQU 18
 
 spritetable:            block SPRITETABLE_SIZE * MAX_SPRITES
 
 currentloop:            db 0
 mainloops:              dw StartScreenLoop, MainGameLoop, GameOverLoop, IntroLoop, LevelCompleteLoop
 initialisers:           dw StartScreenInitialise, GameLoopInitialise, GameOverInitialise, IntroInitialise, LevelCompleteInitialise
-interruptdraw:          dw NULL, GameLoopDraw, NULL, NULL, NULL
-interruptloop:          dw NULL, GameInterrupt, NULL, NULL, NULL
 
 gameinit:               db 0
 

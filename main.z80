@@ -9,6 +9,7 @@ Code_Start:             EQU 0x7FFD
 
                         jp Main_Start                   ; skip any includes
 
+                        include "background.z80"
                         include "constants.z80"
                         include "data.z80"
                         include "fontutils.z80"
@@ -89,82 +90,6 @@ InitialiseInterrupt:
 
 Interrupt:
                         di                                              ; Disable interrupts
-                        push af                                         ; Push everything to the stack
-                        push bc
-                        push de
-                        push hl
-                        push ix
-                        exx
-                        ex af, af'
-                        push af
-                        push bc
-                        push de
-                        push hl
-                        push iy
-
-                        xor a                                           ; clear a to 0 (black)
-                        out (#fe), a                                    ; set border to 0
-
-                        call EraseAllSprites
-
-                        ld a, 1
-                        out (#fe), a
-
-                                                                        ; FIXME: Might be nice to cache this for speed
-                        ld de, interruptdraw                            ; load the interrupt draw table
-                        call GetMethod
-                        ld a, h
-                        cp 0
-                        jr z, InterruptDrawFinished
-
-                        ld a, 2
-                        out (#fe), a
-                        jp (hl)                                         ; jump to it
-
-InterruptDrawFinished:
-                        call DrawAllSprites                            ; Remove the old sprites
-
-                        ld a, 4
-                        out (#fe), a
-
-                        ld de, interruptloop                            ; load the interrupt draw table
-                        call GetMethod
-
-                        ld a, h
-                        cp 0
-                        jr z, InterruptFinished
-
-                        jp (hl)
-                        
-InterruptFinished:
-                        ld a, 0
-                        out (#fe), a
-                        ld b, 255
-InterruptWait:
-                        djnz InterruptWait
-
-                        ld a, 3
-                        out (#fe), a
-
-                        ; call DrawAllSprites                             ; Draw the new sprites
-                        
-
-                        ld a, 6
-                        out (#fe), a
-
-
-                        pop iy                                          ; pop it all back off the stack
-                        pop hl
-                        pop de
-                        pop bc
-                        pop af
-                        exx
-                        ex af,af'
-                        pop ix
-                        pop hl
-                        pop de
-                        pop bc
-                        pop af
                         ei                                              ; enable interrupts again
                         ret
 

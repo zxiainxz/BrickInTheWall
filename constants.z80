@@ -8,6 +8,9 @@ Row_YUIOP                       EQU 0xDFFE
 Row_EnterLKJH                   EQU 0xBFFE
 Row_SpaceSymMNB                 EQU 0x7FFE
 
+SCREEN_BASE                     EQU 0x4000
+ATTR_BASE                       EQU 0x5800
+
 NUMBER_ROWS                     EQU 5
 NUMBER_BRICKS_PER_ROW           EQU 16
 ROW_START                       EQU 32
@@ -23,6 +26,9 @@ INITIAL_BALL_X_DIR              EQU 1
 INITIAL_BAT_Y                   EQU 184 // 184
 INITIAL_BAT_X                   EQU 120
 INITIAL_BAT_COORDS              EQU 0x78B8
+
+BAT_VELOCITY_DELTA              EQU 0x0040
+BAT_VELOCITY_MAX                EQU 3
 
 INITIAL_LIVES                   EQU 3
 

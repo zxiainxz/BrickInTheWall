@@ -30,6 +30,29 @@ GameLoopInitialise:
 
 MainGameLoop:
                         halt
+
+                        xor a                                           ; clear a to 0 (black)
+                        out (#fe), a                                    ; set border to 0
+
+                        call EraseAllSprites
+
+                        ld a, 1
+                        out (#fe), a
+
+                        jr GameLoopDraw
+
+GameLoopDrawFinished:
+
+
+                        call DrawAllSprites                            ; Remove the old sprites
+
+                        ld a, 4
+                        out (#fe), a
+
+                        jr GameLoopLogic
+                        
+GameLoopLogicFinished:
+
                         ld a, (LevelBlockCount)
                         and a
                         jp z, LevelComplete
@@ -78,12 +101,12 @@ GLDrawNextBrick:
 
 GLDrawFinished:
                         pop ix
-                        jp InterruptDrawFinished
+                        jp GameLoopDrawFinished
 
-GameInterrupt:
+GameLoopLogic:
                         ld a, (gameinit)
                         and a
-                        jp z, InterruptFinished
+                        jp z, GameLoopLogicFinished
 
                         call ProposeBallMove                            ; proposed ball coordinates in hl
 
@@ -96,7 +119,6 @@ GameInterrupt:
                         out (#fe), a
 
                         call CheckBatCollision
-                        call ReadKeys
 
                         ld a, 5
                         out (#fe), a
@@ -111,12 +133,16 @@ GameInterrupt:
                         ld a, 1
                         out (#fe), a
 
+                        call ReadKeys
+                        call UpdateBatPosition
+                        call DrawVelocity
+
                         call CommitBallMove
-                        jp InterruptFinished
+                        jp GameLoopLogicFinished
 
 LoseLife
                         call ResetBallBat
-                        jp InterruptFinished
+                        jp GameLoopLogicFinished
 
 LevelComplete:
                         xor a
@@ -279,6 +305,7 @@ LoadSprites:
                         ld de, SPRITETABLE_SIZE
                         add ix, de
 
+                        ; bat
                         ld a, 3
                         ld (ix+SPRITETABLE_FLAGS), a
 
@@ -293,6 +320,12 @@ LoadSprites:
                         ld (ix+SPRITETABLE_OLD_SCADD), hl
                         ld de, (ix+SPRITETABLE_DATA)
                         ld (ix+SPRITETABLE_OLD_DATA), de
+
+                        ld h, INITIAL_BAT_X
+                        ld l, 0
+                        ld (ix+SPRITETABLE_X16), hl
+                        ld h, INITIAL_BAT_Y
+                        ld (ix+SPRITETABLE_Y16), hl
 
                         ret
 
@@ -433,11 +466,27 @@ ReadKeys:
                         in a, (c)
 
                         rra                               ; check for P
-                        jr nc, Move_BatRight              ; move right
+                        jr nc, MoveBatRight              ; move right
 
                         rra                               ; check for O
-                        jr nc, Move_BatLeft
+                        jr nc, MoveBatLeft
 
+                        ld a, (batvelocitytarget)
+                        and a
+                        jr z, RK1
+
+                        xor a
+                        ld (batvelocitytarget), a
+
+                        ld hl, (batvelocitydelta)
+                        sub l                               ; 16bit neg
+                        ld l, a
+                        sbc a, a
+                        sub h
+                        ld h, a
+                        ld (batvelocitydelta), hl
+
+RK1:
                         ld bc, Row_VCXZShift                                ; Check for c, complete level
                         in a, (c)
 
@@ -454,8 +503,6 @@ ReadKeys:
                         ld (yballdir), a
                         ld a, INITIAL_BALL_X_DIR
                         ld (xballdir), a
-
-Move_Done:
                         ret
 
 CompleteLevel:
@@ -463,51 +510,84 @@ CompleteLevel:
                         ld (LevelBlockCount), a
                         ret
 
-Move_BatLeft:
-                        push hl, ix
-
-                        ld ix, spritetable+SPRITETABLE_SIZE
-                        ld hl, (ix+SPRITETABLE_Y)
-                        ld a, h
-
-                        and a
-                        jr z, Move_BatLeftDone
-
-                        sub 3
-
-                        ld h, a
-                        call UpdateSpriteXY
-
-                        ld a, (yballdir)
-                        and a
-
-                        call z, MoveBallToBat
-Move_BatLeftDone:
-                        pop ix, hl
+MoveBatLeft:
+                        ld a, -BAT_VELOCITY_MAX
+                        ld (batvelocitytarget), a
+                        ld hl, -BAT_VELOCITY_DELTA
+                        ld (batvelocitydelta), hl
                         ret
 
-Move_BatRight:
-                        push hl, ix
+MoveBatRight:
+                        ld a, BAT_VELOCITY_MAX
+                        ld (batvelocitytarget), a
+                        ld hl, BAT_VELOCITY_DELTA
+                        ld (batvelocitydelta), hl
+                        ret
+
+UpdateBatPosition:
+                        ld hl, (batvelocity)
+                        ld a, (batvelocitytarget)
+
+                        cp h
+                        jr nz, UBP0
+
+                        ld a, l
+                        and a
+                        jr z, UBP1
+
+UBP0:
+                        ld de, (batvelocitydelta)
+                        add hl, de
+                        ld (batvelocity), hl
+
+UBP1:
+                        ld a, h
+                        and a
+                        jr nz, UBP3
+
+                        ld a, l
+                        and a
+                        ret z
+
+UBP3:
+                        push ix
 
                         ld ix, spritetable+SPRITETABLE_SIZE
-                        ld hl, (ix+SPRITETABLE_Y)
+                        ld de, (ix+SPRITETABLE_X16)
+                        ex de, hl
+
+                        add hl, de
+
                         ld a, h
+                        cp 241
+                        jr c, UBP2
 
-                        cp 240
-                        jr z, Move_BatRightDone
+                        ex af, af'
+                        xor a
+                        ld hl, NULL
+                        ld (batvelocity), hl
+                        ld (batvelocitydelta), hl
+                        ld (batvelocitytarget), a
+                        ex af, af'
 
-                        add 3
+                        cp 255
+                        jr z, UBP2
+                        cp 250
+                        jr nc, UBP2
 
-                        ld h, a
+                        ld hl, 0xF000
+
+UBP2:
+                        ld (ix+SPRITETABLE_X16), hl
+
+                        ld l, (ix+SPRITETABLE_Y)
                         call UpdateSpriteXY
 
                         ld a, (yballdir)
                         and a
-
                         call z, MoveBallToBat
 
-Move_BatRightDone
-                        pop ix, hl
+                        pop ix
                         ret
 
 MoveBallToBat:
@@ -523,3 +603,61 @@ MoveBallToBat:
                         call UpdateSpriteXY
 
                         ret
+
+DrawVelocity:
+                        push bc, de, hl
+                        ld de, 0x5800
+
+                        ld b, 32
+DVErase:
+                        ld a, 56
+                        ld (de), a
+                        inc de
+                        djnz DVErase
+
+                        ld bc, (batvelocity)
+                        call absBC
+
+                        ld a, b
+                        and a
+                        jr z, DVFraction
+
+                        ld de, 0x5800
+                        ld a, 8
+DVDraw:
+                        ld (de), a
+                        inc de
+                        djnz DVDraw
+
+DVFraction:
+                        ld a, c
+                        and a
+                        jr z, DVFinish
+
+                        ld b, c
+                        srl b
+                        srl b
+                        srl b
+                        srl b
+                        ld de, 0x5810
+                        ld a, 16
+
+DVDrawFraction:
+                        ld (de), a
+                        inc de
+                        djnz DVDrawFraction
+
+DVFinish:
+                        pop hl, de, bc
+                        ret
+
+absBC:
+     bit 7,b
+     ret z
+     xor a 
+     sub c 
+     ld c,a
+     sbc a,a 
+     sub b 
+     ld b,a
+     ret
