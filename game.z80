@@ -18,10 +18,6 @@ GameLoopInitialise:
 
                         call LoadSprites                                ; Put the sprites this scene uses into the
                                                                         ; sprite table
-                        di
-                        call DrawAllSprites                             ; Draw the sprites once so the interrupt
-                                                                        ; has something to erase                        
-                        ei
 
                         ld a, 1
                         ld (gameinit), a
@@ -31,26 +27,12 @@ GameLoopInitialise:
 MainGameLoop:
                         halt
 
-                        xor a                                           ; clear a to 0 (black)
-                        out (#fe), a                                    ; set border to 0
-
-                        call EraseAllSprites
-
-                        ld a, 1
-                        out (#fe), a
-
                         jr GameLoopDraw
 
 GameLoopDrawFinished:
 
+                        jp GameLoopLogic
 
-                        call DrawAllSprites                            ; Remove the old sprites
-
-                        ld a, 4
-                        out (#fe), a
-
-                        jr GameLoopLogic
-                        
 GameLoopLogicFinished:
 
                         ld a, (LevelBlockCount)
@@ -72,6 +54,7 @@ GameOver:
                         ld (currentloop), a
                         jp SwitchMainLoop
 
+; Loop through the bricks that need updated redrawing the space as appropriate
 GameLoopDraw:
                         push ix
                         ld ix, UpdateBricks
@@ -100,7 +83,81 @@ GLDrawNextBrick:
                         djnz GLDrawNextBrick
 
 GLDrawFinished:
+                        ld (GLDrawLoopStack+1), sp
+
+                        ld a, (ClearCellCount)
+                        and a
+                        jr z, GLClearCellFinished
+
+                        ld b, a
+                        ld hl, ClearCellList
+                        ld sp, hl
+
+GLEraseCell:
+                        pop hl
+                        pop de
+
+                        ; ld (hl), e
+                        ld h, d
+
+                        xor a
+
+                        dup 3
+                        pop de
+                        ld (hl), e
+                        inc h
+                        ld (hl), d
+                        inc h
+                        edup
+
+                        pop de
+                        ld (hl), e
+                        inc h
+                        ld (hl), d
+
+                        djnz GLEraseCell
+
+
+GLClearCellFinished:
+                        ld a, (DrawCellCount)
+                        and a
+                        jr z, GLDrawLoopFinished
+
+                        ld b, a
+                        ld hl, DrawCellList
+
+                        ld sp, hl
+
+GLDrawCell:
+                        pop hl
+                        pop de
+
+                        ; ld (hl), e
+                        ld h, d
+
+                        dup 3
+                        pop de
+                        ld (hl), e
+                        inc h
+                        ld (hl), d
+                        inc h
+                        edup
+
+                        pop de
+                        ld (hl), e
+                        inc h
+                        ld (hl), d
+
+                        djnz GLDrawCell
+
+GLDrawLoopFinished:
+GLDrawLoopStack:        ld sp, 0
+                        ld hl, DrawCellList
+                        ld (DrawCellListNext), hl
+
                         pop ix
+
+                        call ClearCells
                         jp GameLoopDrawFinished
 
 GameLoopLogic:
@@ -115,29 +172,22 @@ GameLoopLogic:
                         call CheckLoseBall
                         jp z, LoseLife
 
-                        ld a, 0
-                        out (#fe), a
-
                         call CheckBatCollision
 
-                        ld a, 5
-                        out (#fe), a
-
                         call CheckBrickCollision
-                        ld a, 6
-                        out (#fe), a
 
                         call CheckYEdgeCollision
                         call CheckXEdgeCollision
 
-                        ld a, 1
-                        out (#fe), a
-
                         call ReadKeys
                         call UpdateBatPosition
+                        call CommitBatPosition
+
                         call DrawVelocity
 
                         call CommitBallMove
+                        call CommitBallPosition
+
                         jp GameLoopLogicFinished
 
 LoseLife
@@ -261,7 +311,7 @@ ProposeBallMoveX:
 
 CommitBallMove:
                         ld hl, (proposedbally)
-                        call UpdateSpriteXY
+                        call UpdateBallXY
                         ret
 
 ; input - ix set to spritetable
@@ -294,13 +344,15 @@ LoadSprites:
                         ld hl, INITIAL_BALL_COORDS
                         ld (proposedbally), hl
                         ld (oldbally), hl
-                        call UpdateSpriteXY
+                        call UpdateBallXY
                         ld (ix+SPRITETABLE_OLD_X), l
 
                         ld hl, (ix+SPRITETABLE_SCADD)
                         ld (ix+SPRITETABLE_OLD_SCADD), hl
                         ld de, (ix+SPRITETABLE_DATA)
                         ld (ix+SPRITETABLE_OLD_DATA), de
+
+                        call CommitBallPosition
 
                         ld de, SPRITETABLE_SIZE
                         add ix, de
@@ -327,6 +379,7 @@ LoadSprites:
                         ld h, INITIAL_BAT_Y
                         ld (ix+SPRITETABLE_Y16), hl
 
+                        call CommitBatPosition
                         ret
 
 ; Checks if the bat and ball have collided
@@ -473,20 +526,8 @@ ReadKeys:
 
                         ld a, (batvelocitytarget)
                         and a
-                        jr z, RK1
+                        jr nz, TargetZeroVelocity
 
-                        xor a
-                        ld (batvelocitytarget), a
-
-                        ld hl, (batvelocitydelta)
-                        sub l                               ; 16bit neg
-                        ld l, a
-                        sbc a, a
-                        sub h
-                        ld h, a
-                        ld (batvelocitydelta), hl
-
-RK1:
                         ld bc, Row_VCXZShift                                ; Check for c, complete level
                         in a, (c)
 
@@ -503,6 +544,19 @@ RK1:
                         ld (yballdir), a
                         ld a, INITIAL_BALL_X_DIR
                         ld (xballdir), a
+                        ret
+
+TargetZeroVelocity:
+                        xor a
+                        ld (batvelocitytarget), a
+
+                        ld hl, (batvelocitydelta)
+                        sub l                               ; 16bit neg to invert the velocity delta
+                        ld l, a
+                        sbc a, a
+                        sub h
+                        ld h, a
+                        ld (batvelocitydelta), hl
                         ret
 
 CompleteLevel:
@@ -590,6 +644,80 @@ UBP2:
                         pop ix
                         ret
 
+CommitBatPosition:
+                        push de, hl, ix
+
+                        ld ix, spritetable + SPRITETABLE_SIZE
+                        ld hl, (ix+SPRITETABLE_DATA)
+                        ld de, (ix+SPRITETABLE_SCADD)
+
+                        ld a, d                         ; convert pixel addr -> attribute addr
+                        or 0x87                         ; see https://spectrumcomputing.co.uk/forums/viewtopic.php?t=3070
+                        rra
+                        rra
+                        srl a
+                        ld d, a
+
+                        call AddCell
+                        inc de
+                        call AddCell
+                        inc de
+                        call AddCell
+
+                        pop ix, hl, de
+                        ret
+
+CommitBallPosition:
+                        push de, hl, ix
+
+                        ld ix, spritetable
+                        ld hl, (ix+SPRITETABLE_DATA)
+                        ld de, (ix+SPRITETABLE_SCADD)
+
+                        exx
+                        ld hl, (ix+SPRITETABLE_Y)
+                        exx
+
+                        ld a, d
+                        or 0x87
+                        rra
+                        rra
+                        srl a
+                        ld d, a
+
+                        push bc
+
+                        call AddCell
+
+                        ld bc, 32
+                        ex de, hl
+                        add hl, bc
+                        ex de, hl
+
+                        ld c, 56
+                        call AddCell
+
+                        ld bc, 31
+                        ex de, hl
+                        sbc hl, bc
+                        ex de, hl
+
+                        ld c, 56
+                        call AddCell
+
+                        ld bc, 32
+                        ex de, hl
+                        add hl, bc
+                        ex de, hl
+
+                        ld c, 56
+                        call AddCell
+
+                        pop bc
+
+                        pop ix, hl, de
+                        ret
+
 MoveBallToBat:
                         ld ix, spritetable
 
@@ -602,6 +730,214 @@ MoveBallToBat:
                         ld (proposedbally), hl
                         call UpdateSpriteXY
 
+                        ret
+
+; hl - sprite data
+; de - attr address
+
+; returns - hl + 8
+AddCell:
+                        push bc, de, hl
+
+                        ld hl, UsedCellMap - ATTR_BASE
+                        add hl, de                      ; Get the cell position
+
+                        ld a, (hl)                      ; Check if it's already in use
+                        cp 255
+                        jp nz, ACCompositeCell
+                                                        ; Get a new cell
+                        ld a, (DrawCellCount)           ; Check if there is one free
+                        cp MAX_CELLS
+                        jp nc, ACFull                   ; None left
+                        ld (hl), a                      ; record the new cell in the map
+                        inc a                           ; increase the count
+                        ld (DrawCellCount), a           ; update the count
+
+                        push de                         ; Record new cell in used cell list
+                        ex de, hl                       ; swap de&hl - de now points to offset in UsedCellMap
+                        ld hl, (UsedCellListNext)       ; Store offset to UsedCellMap in UsedCellList
+                        ld (hl), e
+                        inc hl
+                        ld (hl), d
+                        inc hl
+                        ld (UsedCellListNext), hl       ; Update the list
+                        pop de                          ; restore de to attribute addr
+
+                        ; Fill in new cell record
+                        ld hl, (DrawCellListNext)
+                        ld (hl), e                      ; Store attribute addr
+                        inc hl
+                        ld (hl), d
+                        inc hl
+                        inc hl
+
+                        ld a, d                         ; convert the highbyte of attr addr to screen addr
+                        add a
+                        add a
+                        add a
+                        and d
+                        ld (hl), a                      ; store high byte
+                        inc hl
+
+                        ex de, hl
+
+                        ; de - bitmap space in DrawCellList
+                        ; hl - attr address
+
+                        push de, hl
+
+                        call GetBrickAtAttr
+
+                        pop hl                  ; hl - attr address
+                        ex de, hl               ; de - attr address, hl - brick address
+
+                        bit 0, e                ; get correct half of brick
+                        jr z, ACCopyBrick
+                        inc hl
+
+ACCopyBrick:                
+                        pop de                  ; de - address in drawcell list
+
+                        exx                 
+                        pop hl                  ; hl' - bitmap data
+                        exx
+
+                        dup 8
+                        ld a, (hl)
+                        exx
+                        or (hl)
+                        inc hl
+                        exx
+
+                        ld (de), a
+                        inc hl
+                        inc hl
+                        inc de
+                        edup
+
+                        ld (DrawCellListNext), de
+
+                        pop de, bc
+                        ret
+
+ACCompositeCell:
+                        ld h, 0                         ; a * 12
+                        ld l, a
+                        add hl, hl
+                        add hl, hl
+                        ld d, h
+                        ld e, l
+                        add hl, hl
+                        add hl, de
+
+                        ld de, DrawCellList + 4
+                        add hl, de
+
+                        ex hl, de
+
+                        pop hl
+
+                        dup 8
+                        ld a, (de)
+                        or (hl)
+                        ld (de), a
+                        inc hl
+                        inc de
+                        edup
+
+                        pop de, bc
+                        ret
+
+ACFull:
+                        pop hl, de, bc
+                        ret
+
+
+ClearCells:
+                        ld a, (DrawCellCount)
+                        and a
+                        ret z
+
+                        push bc, hl
+
+                        ld b, a
+                        ld hl, UsedCellList
+                        ld a, 255
+
+CCClearUsedCell:
+                        ld e, (hl)
+                        inc hl
+                        ld d, (hl)
+                        inc hl
+                        ld (de), a
+
+                        djnz CCClearUsedCell
+
+                        ld a, (DrawCellCount)
+                        ld b, a
+
+                        ld hl, DrawCellList
+
+                        ld de, ClearCellList
+
+CCClearCell:
+                        push hl
+
+                        dup 4
+                        ld a, (hl)
+                        ld (de), a
+                        inc de
+                        inc hl
+                        edup
+
+                        pop hl                          ; hl = start of drawcell
+
+                        push hl                         ; store start of drawcell
+
+                        push de                         ; store start of clearcell data
+
+                        ld a, (hl)                      ; Get attr address
+                        inc hl
+                        ld h, (hl)
+                        ld l, a
+
+                        call GetBrickAtAttr             ; Get brick address in de
+
+                        bit 0, l                        ; if the attr address is odd then we need the second
+                        jr z, CCCopyBrick               ; half of the brick
+                        inc de
+
+CCCopyBrick:
+                        pop hl                          ; pop the start of clearcell data into hl
+
+                        dup 8                           ; copy the brick data into the clearcell data
+                        ld a, (de)
+                        ld (hl), a
+                        inc de                          ; skip every other byte
+                        inc de
+                        inc hl
+                        edup
+
+                        ex de, hl                       ; de - next ClearCell, hl - end of brick data
+
+                        pop hl                          ; hl - start of DrawCell
+                        push de
+                        ld de, CLEARCELL_SIZE
+                        add hl, de                      ; hl - next drawcell
+                        pop de                          ; de - next ClearCell
+
+                        djnz CCClearCell                
+
+                        ld a, (DrawCellCount)
+                        ld (ClearCellCount), a
+                        xor a
+                        ld (DrawCellCount), a
+                        ld hl, DrawCellList
+                        ld (DrawCellListNext), hl
+                        ld hl, UsedCellList
+                        ld (UsedCellListNext), hl
+
+                        pop hl, bc
                         ret
 
 DrawVelocity:
@@ -651,13 +987,3 @@ DVFinish:
                         pop hl, de, bc
                         ret
 
-absBC:
-     bit 7,b
-     ret z
-     xor a 
-     sub c 
-     ld c,a
-     sbc a,a 
-     sub b 
-     ld b,a
-     ret

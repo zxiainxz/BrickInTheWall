@@ -67,7 +67,6 @@ RowColours:             db 8, 16, 24, 32, 48
 LevelBlockCount:        db 0
 
 previous_row:           block 16, 0
-LevelMap:               block 256
 LevelIterators:         dw NULL, NULL, NULL
 
 UPDATEBRICKS_SIZE       EQU 6
@@ -75,22 +74,6 @@ UPDATEBRICKS_ADDR       EQU 0               ; screen address
 UPDATEBRICKS_SPRITE     EQU 2               ; sprite address
 UPDATEBRICKS_ATTRADDR   EQU 4               ; attr address
 UpdateBricks:           block UPDATEBRICKS_SIZE * 5 + 2, 0  ; Enough for 5 blocks + 16bit null termination
-
-UPDATECELL_SIZE         EQU 13
-UPDATECELL_ADDR         EQU 0
-UPDATECELL_DATA         EQU 2
-UPDATECELL_ATTRADDR     EQU 10
-UPDATECELL_ATTR         EQU 12
-
-; Enough space for 24 cells, plus a 16 bit null termination
-; Current max usage would be:
-; 4 cells for where the ball was
-; 4 cells for where the ball is
-; 3 cells for where the bat was
-; 3 cells for where the bat is
-; 10 cells for 5 bricks
-; Things like multi-ball or bullets would require this to be increased
-UpdateCellList:         block UPDATECELL_SIZE * 24 + 2, 0 ; 
 
 ; variables
 yballdir:               db 0
@@ -154,4 +137,31 @@ gameover_string:        byte "GAME OVER\0"
 level_string            byte "LEVEL \0\0\0"
 level_complete_string:  byte "LEVEL CLEAR\0"
 
+                        org 0xb000
+LevelMap:               block 256
+
+DRAWCELL_SIZE           EQU 12
+DRAWCELL_ATTRADDR       EQU 0
+DRAWCELL_ATTR           EQU 2
+DRAWCELL_SCRHIGH        EQU 3
+DRAWCELL_DATA           EQU 4
+
+; Enough space for 200 cells
+DrawCellCount:          db 0
+DrawCellList:           block DRAWCELL_SIZE * MAX_CELLS, 0          ; contains drawcell data
+DrawCellListNext:       dw DrawCellList
+UsedCellList:           block MAX_CELLS * 2, 0                      ; contains a pointer to the cell in UsedCellList
+UsedCellListNext:       dw UsedCellList
+
+                        org 0xc000
+UsedCellMap:            block 32 * 24, 255
+
+CLEARCELL_SIZE          EQU 12
+CLEARCELL_ATTRADDR      EQU 0
+CLEARCELL_ATTR          EQU 2
+CLEARCELL_SCRHIGH       EQU 3
+CLEARCELL_DATA          EQU 4
+
+ClearCellCount:         db 0
+ClearCellList:          block MAX_CELLS * CLEARCELL_SIZE, 0
                         include "anarchist-font.z80"

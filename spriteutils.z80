@@ -501,6 +501,57 @@ CheckX6v16x6v8:
                         cp a
                         ret
 
+UpdateBallXY:
+                        push hl
+
+                        ld (ix+SPRITETABLE_Y), hl
+
+                        call scadd
+                        ld (ix+SPRITETABLE_SCADD), de
+
+                        ld de, (ix+SPRITETABLE_PRESHIFT)
+
+                        ld a, h
+                        and 7
+
+                        ld h, 0
+                        ld l, a
+
+                        add hl, hl
+                        
+                        add hl, de
+                        ld a, (hl)
+                        inc hl
+                        ld h, (hl)
+                        ld l, a
+
+                        ex de, hl               ; de now contains the x offset ball data
+
+                        pop hl
+
+                        ld a, l
+                        and 7
+                        
+                        push bc
+                        
+                        ld b, a
+                        ld a, 8
+                        sub b
+                        
+                        pop bc
+
+                        push hl
+                        ld h, 0
+                        ld l, a
+
+                        ex de, hl
+                        add hl, de
+
+                        ld (ix+SPRITETABLE_DATA), hl
+
+                        pop hl
+                        ret
+
 ; ix - sprite location
 ; hl - x,y
 UpdateSpriteXY:

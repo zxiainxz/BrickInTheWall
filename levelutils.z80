@@ -565,7 +565,6 @@ RemoveBrick
                         ld l, a
 
                         ld a, (iy-16)
-                        and 15
                         call AddUpdateBrick
 
                         pop hl
@@ -582,7 +581,6 @@ RB1:
                         ld l, a
 
                         ld a, (iy+16)
-                        and 15
                         call AddUpdateBrick
 
                         pop hl
@@ -599,7 +597,6 @@ RB2:
                         ld h, a
 
                         ld a, (iy-1)
-                        and 15
                         call AddUpdateBrick
 
                         pop hl
@@ -616,7 +613,6 @@ RB3:
                         ld h, a
 
                         ld a, (iy+1)
-                        and 15
                         call AddUpdateBrick
 
                         pop hl
@@ -656,6 +652,8 @@ AddUpdateBrick:
 ; a - brick code
 ; returns: de - sprite address
 GetBrickSprite:
+                        and 15
+
                         push hl
                         ld h, 0
                         ld l, a
@@ -669,5 +667,46 @@ GetBrickSprite:
                         ld l, a
 
                         ex de, hl
+                        pop hl
+                        ret
+
+; hl - attr addr
+; de - brick sprite
+GetBrickAtAttr:
+                        push hl
+
+                        ld de, ATTR_BASE + (32 * 3)
+                        sbc hl, de
+
+                        jr c, GBAAOutside
+
+                        srl h
+                        rr l
+
+                        ld a, h
+                        and a
+
+                        jr nz, GBAAOutside
+
+                        ; get attr offset: attr - attrbase
+                        ; attr offset - (32 * 3)
+                        ; offset / 2
+                        ; offset > 256 - return empty
+                        ; add levelmap - 16
+                        ; get brick
+
+                        ld de, LevelMap - 16
+                        add hl, de
+
+                        ld a, (hl)
+                        call GetBrickSprite
+
+                        pop hl
+                        ret
+
+GBAAOutside:
+                        ld a, 0
+                        call GetBrickSprite
+
                         pop hl
                         ret
