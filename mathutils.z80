@@ -13,3 +13,16 @@ Between:
 Between2:
                         cp a                            ; set z to indicate between
                         ret
+
+
+; Absolute value currently in bc
+absBC:
+                        bit 7,b
+                        ret z
+                        xor a 
+                        sub c 
+                        ld c,a
+                        sbc a,a 
+                        sub b 
+                        ld b,a
+                        ret
