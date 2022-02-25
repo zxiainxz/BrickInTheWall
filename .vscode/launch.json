@@ -24,7 +24,7 @@
 				}
 			],
 			"commandsAfterLaunch": [
-				"-LOGPOINT enable -WPMEM enable"
+				"-LOGPOINT enable",  "-WPMEM enable", "-rmv"
 			],
 			"topOfStack": "Stack_Top",
 			"rootFolder": "${fileDirname}",
