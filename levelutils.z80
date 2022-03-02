@@ -52,26 +52,22 @@ PixelNoOffset2LevelMap:
 ; inputs b - brick x, c - brick y
 ; outputs: h - pixel x, l - pixel y
 Brick2Pixel:
-                        push af
+                        ex af, af'
 
                         ld a, b
-                        add a, a
-                        add a, a
-                        add a, a
-                        add a, a
+        .4              add a, a
 
                         ld h, a
 
                         ld a, c
-                        add a, a
-                        add a, a
-                        add a, a
+        .3              add a, a
 
-                        add 32                          ; y offset
+                        add a, 32                          ; y offset
 
                         ld l, a
 
-                        pop af
+                        ex af, af'
+                        
                         ret
 
 ; Does not take offset into account
@@ -365,44 +361,42 @@ ColourBlock:
                         ret
 
 CheckBrickCollision:
-                        push hl
-
-                        srl l
-                        srl l
-                        srl l
-
                         ld a, l
+
+                        srl a
+                        srl a
+                        srl a
+
                         sub 2
                         cp 17
 
-                        jr c, CBC                       
-                        pop hl
+                        jr c, CBC
                         ret
 
 CBC:
-                        ld l, a
-
+                        ex af, af'
                         ld a, (yballdir)
-                        cp 1
+                        cp 1                    ; going down
                         jr z, CBC1
-                        dec l
-
+                        ex af, af'
+                        dec a
+                        jr CBC15
 CBC1:
-                        sla l
-                        sla l
-                        sla l
-                        sla l
+                        ex af, af'
+CBC15:
+                        sla a
+                        sla a
+                        sla a
+                        sla a
 
                         ld d, 0
-                        ld e, l
+                        ld e, a
 
-                        ld c, l
+                        ld c, a
                         srl c
                         ld a, c
                         add a, 24
                         ld c, a
-
-                        pop hl
 
                         ld iy, LevelMap - 16
                         add iy, de
@@ -442,12 +436,12 @@ CBCMoveToNextBrick:
                         ld a, c
                         add 8
                         cp 160
+
                         ret z
 
                         ld c, a
 
                         jr CBCNextRow
-
                         ret
 
 
@@ -634,6 +628,11 @@ RB4:
 ; a - brick code
 ; hl - brick pixel
 AddUpdateBrick:
+                        ex af, af'
+                        ld a, 6
+                        out (0xfe), a
+                        ex af, af'
+
                         push bc, hl
 
                         call scadd
@@ -669,6 +668,10 @@ AddUpdateBrick:
                         call AddBGCell
 
                         pop bc
+
+                        ld a, 1
+                        out (0xfe), a
+
                         ret
 
 ; a - brick code
