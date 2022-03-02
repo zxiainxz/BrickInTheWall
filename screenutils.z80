@@ -287,3 +287,71 @@ EraseMoveToNextLine:
                         djnz EraseNextLine   
                         pop bc
                         ret
+
+CopyBackBufferToScreen:
+                        ld (CBBTS_SP+1), sp
+
+                        ld hl, BACKBUFFER_BASE
+                        exx
+                        ld hl, SCREEN_BASE
+CBBTS_NextLine:
+                        ; ld (CBBTS_SCREEN1+1), hl
+                        exx
+
+                        ld sp, hl
+
+                        pop af, bc, de, ix
+
+                        exx
+                        ex af, af'
+
+                        ld de, 16
+                        add hl, de
+
+                        pop af, bc, de, iy
+
+                        ld (CBBTS_BUFFER1+1), sp
+
+                        ld sp, hl
+                        push iy, de, bc, af
+
+                        ex af, af'
+                        exx
+
+                        push ix, de, bc, af
+
+CBBTS_BUFFER1:
+                        ld hl, 0
+                        ld sp, hl
+
+                        pop af, bc, de, ix
+                        exx
+                        ex af, af'
+
+                        ld de, 16
+                        add hl, de
+
+                        pop af, bc, de, iy
+
+                        ld (CBBTS_BUFFER2+1), sp
+                        ld sp, hl
+
+                        push iy, de, bc, af
+
+                        ex af, af'
+                        exx
+
+                        push ix, de, bc, af
+
+CBBTS_BUFFER2:
+                        ld hl, 0
+                        exx
+
+CBBTS_SCREEN1:
+                        ld a, h
+                        cp 0x58
+                        jr nz, CBBTS_NextLine
+                        
+CBBTS_SP:               ld sp, 0
+                        exx
+                        ret

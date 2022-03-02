@@ -9,6 +9,7 @@ Row_EnterLKJH                   EQU 0xBFFE
 Row_SpaceSymMNB                 EQU 0x7FFE
 
 SCREEN_BASE                     EQU 0x4000
+BACKBUFFER_BASE                 EQU 0xA000
 ATTR_BASE                       EQU 0x5800
 
 NUMBER_ROWS                     EQU 5
@@ -49,3 +50,5 @@ LEVELCOMPLETE_SCENE             EQU 4
 
 MAX_CELLS                       EQU 200
 DRAWLIST_CELL_SIZ               EQU 12
+
+LEVEL_BASE_OFFSET               EQU 0x60

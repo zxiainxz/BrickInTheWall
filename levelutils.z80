@@ -250,7 +250,7 @@ CheckBelow:
                         ret
 
 DisplayLevel:
-                        ld de, 0x4060                                ; 0, 31
+                        ld de, BACKBUFFER_BASE + LEVEL_BASE_OFFSET ; 0, 31
                         ld hl, LevelMap-16
                         ld b, 16
 
@@ -633,20 +633,42 @@ RB4:
 
 ; a - brick code
 ; hl - brick pixel
-; ix - UpdateBrick entry
 AddUpdateBrick:
+                        push bc, hl
+
                         call scadd
-                        ld (ix+UPDATEBRICKS_ADDR), de
+                        ex de, hl                       ; screen addr in hl
 
+                        ld de, ScreenBuffer - SCREEN_BASE       ; offset between screen address and buffer
+                        add hl, de                              ; get address in buffer
+                        
+                        call GetBrickSprite             ; brick sprite in de
+                        ex de, hl                       ; buffer addr in de, sprite in hl
+
+                        ld bc, 16
+
+                        dup 7                           ; update the brick sprite in the backbuffer
+        .2              ldi
+                        inc d
+        .2              dec de
+                        edup
+
+        .2              ldi
+
+                        pop hl
                         call pixelattradd
-                        ld (ix+UPDATEBRICKS_ATTRADDR), de
+                        ld a, 56
+                        ld (de), a
 
-                        call GetBrickSprite
-                        ld (ix+UPDATEBRICKS_SPRITE), de
+                        call AddBGCell
+                        inc de
 
-                        ld de, UPDATEBRICKS_SIZE
-                        add ix, de
+                        ld a, 56
+                        ld (de), a
 
+                        call AddBGCell
+
+                        pop bc
                         ret
 
 ; a - brick code

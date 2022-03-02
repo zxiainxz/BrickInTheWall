@@ -57,32 +57,7 @@ GameOver:
 ; Loop through the bricks that need updated redrawing the space as appropriate
 GameLoopDraw:
                         push ix
-                        ld ix, UpdateBricks
-                        ld b, 5
-GLDrawNextBrick:
-                        ld a, (ix+1)
-                        and a
-                        jp z, GLDrawFinished
 
-                        ld de, (ix+UPDATEBRICKS_ADDR)
-                        ld hl, (ix+UPDATEBRICKS_SPRITE)
-
-                        call DrawBrick
-
-                        ld de, (ix+UPDATEBRICKS_ATTRADDR)
-                        ld a, 56
-                        ld (de), a
-                        inc de
-                        ld (de), a
-
-                        ld (ix+UPDATEBRICKS_ADDR), 0x00
-                        ld (ix+UPDATEBRICKS_ADDR+1), 0x00
-                        ld de, UPDATEBRICKS_SIZE
-                        add ix, de
-
-                        djnz GLDrawNextBrick
-
-GLDrawFinished:
                         ld (GLDrawLoopStack+1), sp
 
                         ld a, (ClearCellCount)
@@ -94,26 +69,27 @@ GLDrawFinished:
                         ld sp, hl
 
 GLEraseCell:
-                        pop hl
-                        pop de
+                        pop hl                                  ; Take the cell data from the stack
+                        pop de                                  
 
                         ; ld (hl), e
-                        ld h, d
+                        ld h, d                                 ; Convert attr address to screen
 
-                        xor a
+                        ld (GLEraseCellScreenSM+1), hl          ; store screen address for later
+                        ld de, ScreenBuffer - SCREEN_BASE       ; offset between screen address and buffer
+                        add hl, de                              ; get address in buffer
+                        ex de, hl                               ; switch to put buffer in de
+GLEraseCellScreenSM:
+                        ld hl, 0                                ; restore screen address
 
-                        dup 3
-                        pop de
-                        ld (hl), e
-                        inc h
-                        ld (hl), d
+                        dup 7
+                        ld a, (de)                              ; Copy the buffer cell to screen
+                        ld (hl), a
+                        inc d
                         inc h
                         edup
-
-                        pop de
-                        ld (hl), e
-                        inc h
-                        ld (hl), d
+                        ld a, (de)
+                        ld (hl), a
 
                         djnz GLEraseCell
 
@@ -216,6 +192,7 @@ StartLevel:
                         call LoadLevel
 
                         call DisplayLevel
+                        call CopyBackBufferToScreen
 
                         ret
 
@@ -732,12 +709,84 @@ MoveBallToBat:
 
                         ret
 
+AddBGCell:
+                        push bc, de, hl
+
+                        ld hl, UsedCellMap - ATTR_BASE
+                        add hl, de                      ; Get the cell position
+
+                        ld a, (hl)                      ; Check if it's already in use
+                        cp 255
+                        jp nz, AddBGCellComplete
+                                                        ; Get a new cell
+                        ld a, (DrawCellCount)           ; Check if there is one free
+                        cp MAX_CELLS
+                        jp nc, AddBGCellComplete        ; None left
+                        ld (hl), a                      ; record the new cell in the map
+                        inc a                           ; increase the count
+                        ld (DrawCellCount), a           ; update the count
+
+                        push de                         ; Record new cell in used cell list
+                        ex de, hl                       ; swap de&hl - de now points to offset in UsedCellMap
+                        ld hl, (UsedCellListNext)       ; Store offset to UsedCellMap in UsedCellList
+                        ld (hl), e
+                        inc hl
+                        ld (hl), d
+                        inc hl
+                        ld (UsedCellListNext), hl       ; Update the list
+                        pop de                          ; restore de to attribute addr
+
+                        ; Fill in new cell record
+                        ld hl, (DrawCellListNext)
+                        ld (hl), e                      ; Store attribute addr
+                        inc hl
+                        ld (hl), d
+                        inc hl
+                        inc hl
+
+                        ld a, d                         ; convert the highbyte of attr addr to screen addr
+                        add a
+                        add a
+                        add a
+                        and d
+                        ld (hl), a                      ; store high byte
+                        inc hl
+
+                        push hl
+                        ld h, d
+                        ld l, e
+
+                        ld de, ScreenBuffer - SCREEN_BASE       ; offset between screen address and buffer
+                        add hl, de                              ; get address in buffer
+
+                        pop de                                  ; de - DrawCell address
+
+                        dup 7
+                        ld a, (hl)
+                        ld (de), a
+                        inc de
+                        inc h
+                        edup
+                        ld a, (hl)
+                        ld (de), a
+                        inc de
+
+                        ld (DrawCellListNext), de
+
+AddBGCellComplete:
+                        pop hl, de, bc
+                        ret
+
 ; hl - sprite data
 ; de - attr address
 
 ; returns - hl + 8
 AddCell:
-                        push bc, de, hl
+                        push bc, de, hl, hl
+
+                        exx
+                        pop hl
+                        exx
 
                         ld hl, UsedCellMap - ATTR_BASE
                         add hl, de                      ; Get the cell position
@@ -778,44 +827,42 @@ AddCell:
                         and d
                         ld (hl), a                      ; store high byte
                         inc hl
+;---
+                        push hl
+                        ld h, a
+                        ld l, e
 
-                        ex de, hl
+                        ld de, ScreenBuffer - SCREEN_BASE       ; offset between screen address and buffer
+                        add hl, de                              ; get address in buffer
 
-                        ; de - bitmap space in DrawCellList
-                        ; hl - attr address
+                        pop de                                  ; de - DrawCell address
 
-                        push de, hl
-
-                        call GetBrickAtAttr
-
-                        pop hl                  ; hl - attr address
-                        ex de, hl               ; de - attr address, hl - brick address
-
-                        bit 0, e                ; get correct half of brick
-                        jr z, ACCopyBrick
-                        inc hl
-
-ACCopyBrick:                
-                        pop de                  ; de - address in drawcell list
-
-                        exx                 
-                        pop hl                  ; hl' - bitmap data
-                        exx
-
-                        dup 8
+                        dup 7
                         ld a, (hl)
+
                         exx
                         or (hl)
                         inc hl
                         exx
 
                         ld (de), a
-                        inc hl
-                        inc hl
                         inc de
+                        inc h
                         edup
 
+                        ld a, (hl)
+                        exx
+                        or (hl)
+                        exx
+
+                        ld (de), a
+                        inc de
+
                         ld (DrawCellListNext), de
+
+                        pop hl
+                        ld de, 8
+                        add hl, de
 
                         pop de, bc
                         ret
@@ -881,50 +928,23 @@ CCClearUsedCell:
                         ld de, ClearCellList
 
 CCClearCell:
-                        push hl
-
-                        dup 4
-                        ld a, (hl)
+                        dup 3
+                        ld a, (hl)                              ; Copy cell data to ClearCellList
                         ld (de), a
                         inc de
                         inc hl
                         edup
 
-                        pop hl                          ; hl = start of drawcell
-
-                        push hl                         ; store start of drawcell
-
-                        push de                         ; store start of clearcell data
-
-                        ld a, (hl)                      ; Get attr address
-                        inc hl
-                        ld h, (hl)
-                        ld l, a
-
-                        call GetBrickAtAttr             ; Get brick address in de
-
-                        bit 0, l                        ; if the attr address is odd then we need the second
-                        jr z, CCCopyBrick               ; half of the brick
+                        ld a, (hl)
+                        ld (de), a
                         inc de
 
-CCCopyBrick:
-                        pop hl                          ; pop the start of clearcell data into hl
-
-                        dup 8                           ; copy the brick data into the clearcell data
-                        ld a, (de)
-                        ld (hl), a
-                        inc de                          ; skip every other byte
-                        inc de
-                        inc hl
-                        edup
-
-                        ex de, hl                       ; de - next ClearCell, hl - end of brick data
-
-                        pop hl                          ; hl - start of DrawCell
                         push de
-                        ld de, CLEARCELL_SIZE
-                        add hl, de                      ; hl - next drawcell
-                        pop de                          ; de - next ClearCell
+
+                        ld de, 9                                ; move DrawCell past data
+                        add hl, de
+
+                        pop de
 
                         djnz CCClearCell                
 

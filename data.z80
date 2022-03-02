@@ -66,7 +66,6 @@ bg116x16Data0: db 128, 1, 96, 6, 28, 56, 3, 192, 32, 4, 64, 2, 1, 128, 2, 64, 2,
 RowColours:             db 8, 16, 24, 32, 48
 LevelBlockCount:        db 0
 
-previous_row:           block 16, 0
 LevelIterators:         dw NULL, NULL, NULL
 
 UPDATEBRICKS_SIZE       EQU 6
@@ -137,7 +136,10 @@ gameover_string:        byte "GAME OVER\0"
 level_string            byte "LEVEL \0\0\0"
 level_complete_string:  byte "LEVEL CLEAR\0"
 
-                        org 0xb000
+                        org 0xa000
+ScreenBuffer:           block 32 * 24 * 8, 0
+
+previous_row:           block 16, 0
 LevelMap:               block 256
 
 DRAWCELL_SIZE           EQU 12
@@ -153,14 +155,13 @@ DrawCellListNext:       dw DrawCellList
 UsedCellList:           block MAX_CELLS * 2, 0                      ; contains a pointer to the cell in UsedCellList
 UsedCellListNext:       dw UsedCellList
 
-                        org 0xc000
+                        org 0xd000
 UsedCellMap:            block 32 * 24, 255
 
-CLEARCELL_SIZE          EQU 12
+CLEARCELL_SIZE          EQU 4
 CLEARCELL_ATTRADDR      EQU 0
-CLEARCELL_ATTR          EQU 2
+CLEARCELL_PADDING       EQU 2
 CLEARCELL_SCRHIGH       EQU 3
-CLEARCELL_DATA          EQU 4
 
 ClearCellCount:         db 0
 ClearCellList:          block MAX_CELLS * CLEARCELL_SIZE, 0
