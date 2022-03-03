@@ -58,14 +58,14 @@ GameOver:
 GameLoopDraw:
                         push ix
 
-                        ld (GLDrawLoopStack+1), sp
+                        ld (GLDrawLoopStack+1), sp              ; Save the stack
 
-                        ld a, (ClearCellCount)
+                        ld a, (ClearCellCount)                  ; Check how many clear cells
                         and a
-                        jr z, GLClearCellFinished
+                        jr z, GLClearCellFinished               ; 0? Skip
 
                         ld b, a
-                        ld hl, ClearCellList
+                        ld hl, ClearCellList                    ; set stack to point to ClearCellList
                         ld sp, hl
 
 GLEraseCell:
@@ -101,24 +101,24 @@ GLClearCellFinished:
                         ld a, 3
                         out (0xfe), a
 
-                        ld a, (DrawCellCount)
+                        ld a, (DrawCellCount)                   ; How many DrawCells?
                         and a
-                        jr z, GLDrawLoopFinished
+                        jr z, GLDrawLoopFinished                ; 0? Skip
 
                         ld b, a
-                        ld hl, DrawCellList
+                        ld hl, DrawCellList                     ; point stack at DrawCellList
 
                         ld sp, hl
 
 GLDrawCell:
-                        pop hl
-                        pop de
+                        pop hl                                  ; pop the attr address
+                        pop de                                  ; pop the screen high byte
 
-                        ; ld (hl), e
-                        ld h, d
+                        ; ld (hl), e                            ; e is unused
+                        ld h, d                                 ; make hl the screen address
 
                         dup 3
-                        pop de
+                        pop de                                  ; pop the next two bytes of the cell data
                         ld (hl), e
                         inc h
                         ld (hl), d
@@ -133,9 +133,9 @@ GLDrawCell:
                         djnz GLDrawCell
 
 GLDrawLoopFinished:
-GLDrawLoopStack:        ld sp, 0
+GLDrawLoopStack:        ld sp, 0                                ; restore the stack
                         ld hl, DrawCellList
-                        ld (DrawCellListNext), hl
+                        ld (DrawCellListNext), hl               ; reset the DrawCells
 
                         pop ix
 
@@ -940,11 +940,9 @@ ACFull:
 
 
 ClearCells:
-                        ld a, (DrawCellCount)
+                        ld a, (DrawCellCount)                   ; how many draw cells?
                         and a
-                        ret z
-
-                        push bc, hl
+                        ret z                                   ; 0? ret
 
                         ld b, a
                         ld hl, UsedCellList
@@ -989,14 +987,13 @@ CCClearCell:
 
                         ld a, (DrawCellCount)
                         ld (ClearCellCount), a
+
                         xor a
                         ld (DrawCellCount), a
-                        ld hl, DrawCellList
-                        ld (DrawCellListNext), hl
+
                         ld hl, UsedCellList
                         ld (UsedCellListNext), hl
 
-                        pop hl, bc
                         ret
 
 DrawVelocity:
