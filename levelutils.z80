@@ -360,6 +360,7 @@ ColourBlock:
                         djnz ColourNextBlock
                         ret
 
+; Inputs: hl - ball x, y
 CheckBrickCollision:
                         ld a, l
 
@@ -374,6 +375,8 @@ CheckBrickCollision:
                         ret
 
 CBC:
+                        push hl
+
                         ex af, af'
                         ld a, (yballdir)
                         cp 1                    ; going down
@@ -425,7 +428,7 @@ CBCMoveToNextBrick:
                         exx
 
                         cp 32
-                        ret z
+                        jr z, CBCFinished
 
                         ld a, b
                         add 16
@@ -437,11 +440,14 @@ CBCMoveToNextBrick:
                         add 8
                         cp 160
 
-                        ret z
+                        jr z, CBCFinished
 
                         ld c, a
 
                         jr CBCNextRow
+
+CBCFinished:
+                        pop hl
                         ret
 
 
@@ -457,6 +463,7 @@ BrickCollision:
 
                         call RemoveBrick                        ; remove the brick
 
+                        pop hl
                         ret                                     ; ret here will stop checking any other bricks
 
 ; bc - brick x,y

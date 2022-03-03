@@ -150,13 +150,9 @@ GLDrawLoopStack:        ld sp, 0                                ; restore the st
                         jp GameLoopDrawFinished
 
 GameLoopLogic:
-                        ld a, (gameinit)
-                        and a
-                        jp z, GameLoopLogicFinished
+                        ld ix, spritetable
 
                         call ProposeBallMove                            ; proposed ball coordinates in hl
-
-                        ld ix, spritetable
 
                         call CheckLoseBall
                         jp z, LoseLife
@@ -172,7 +168,7 @@ GameLoopLogic:
                         call UpdateBatPosition
                         call CommitBatPosition
 
-                        call DrawVelocity
+                        ; call DrawVelocity
 
                         call CommitBallMove
                         call CommitBallPosition
@@ -274,33 +270,35 @@ DrawLife:
                         ret
 
 ; Works out where the ball should move to
+; Inputs: ix - set to the sprite table
 ; Outputs: hl - proposed ball x,y
 ProposeBallMove:
-                        ld hl, (proposedbally)
-                        ld (oldbally), hl
+                        ld hl, (ix+SPRITETABLE_Y)      ; Get ball coordinate
+                        ld (oldbally), hl              ; store it for rolling back
 
                         ld a, (yballdir)               ; Get ball direction
                         and a
-                        jr z, ProposeBallMoveX
+                        jr z, ProposeBallMoveX          ; Not moving? skip
 
                         add l                           ; move ball in that direction
                         ld l, a
 
-                        ld (proposedbally), a
+                        ld (proposedbally), a           ; store proposed direction
 
 ProposeBallMoveX:
-                        ld a, (xballdir)
+                        ld a, (xballdir)               ; Get X direction
                         and a
-                        ret z
+                        ret z                           ; Not moving? return
 
-                        add h
+                        add h                           ; move ball in that direction
                         ld h, a
 
                         ld (proposedballx), a
                         ret
 
+; inputs: hl - proposed ball position
 CommitBallMove:
-                        ld hl, (proposedbally)
+                        ; ld hl, (proposedbally)
                         call UpdateBallXY
                         ret
 
@@ -540,6 +538,8 @@ TargetZeroVelocity:
                         xor a
                         ld (batvelocitytarget), a
 
+                        push hl
+
                         ld hl, (batvelocitydelta)
                         sub l                               ; 16bit neg to invert the velocity delta
                         ld l, a
@@ -547,6 +547,8 @@ TargetZeroVelocity:
                         sub h
                         ld h, a
                         ld (batvelocitydelta), hl
+
+                        pop hl
                         ret
 
 CompleteLevel:
@@ -555,20 +557,30 @@ CompleteLevel:
                         ret
 
 MoveBatLeft:
+                        push hl
+
                         ld a, -BAT_VELOCITY_MAX
                         ld (batvelocitytarget), a
                         ld hl, -BAT_VELOCITY_DELTA
                         ld (batvelocitydelta), hl
+
+                        pop hl
                         ret
 
 MoveBatRight:
+                        push hl
+
                         ld a, BAT_VELOCITY_MAX
                         ld (batvelocitytarget), a
                         ld hl, BAT_VELOCITY_DELTA
                         ld (batvelocitydelta), hl
+
+                        pop hl
                         ret
 
 UpdateBatPosition:
+                        push hl
+
                         ld hl, (batvelocity)
                         ld a, (batvelocitytarget)
 
@@ -591,7 +603,7 @@ UBP1:
 
                         ld a, l
                         and a
-                        ret z
+                        jr z, UBPFinished
 
 UBP3:
                         push ix
@@ -629,10 +641,29 @@ UBP2:
 
                         ld a, (yballdir)
                         and a
-                        call z, MoveBallToBat
-
                         pop ix
+
+                        jr z, MoveBallToBat
+
+UBPFinished:
+                        pop hl
                         ret
+
+MoveBallToBat:
+                        pop hl
+                        ld ix, spritetable
+
+                        ld a, (ix+SPRITETABLE_X+SPRITETABLE_SIZE)
+                        add 4
+
+                        ld hl, (ix+SPRITETABLE_Y)
+                        ld h, a
+
+                        ld (proposedbally), hl
+                        call UpdateSpriteXY
+
+                        ret
+
 
 CommitBatPosition:
                         push de, hl, ix
@@ -706,20 +737,6 @@ CommitBallPosition:
                         pop bc
 
                         pop ix, hl, de
-                        ret
-
-MoveBallToBat:
-                        ld ix, spritetable
-
-                        ld a, (ix+SPRITETABLE_X+SPRITETABLE_SIZE)
-                        add 4
-
-                        ld hl, (ix+SPRITETABLE_Y)
-                        ld h, a
-
-                        ld (proposedbally), hl
-                        call UpdateSpriteXY
-
                         ret
 
 AddBGCell:
