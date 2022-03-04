@@ -1,6 +1,4 @@
 GameLoopInitialise:
-                        xor a
-                        ld (gameinit), a
                         ld hl, lives
                         ld (hl), INITIAL_LIVES                          ; set initial lives
 
@@ -19,44 +17,10 @@ GameLoopInitialise:
                         call LoadSprites                                ; Put the sprites this scene uses into the
                                                                         ; sprite table
 
-                        ld a, 1
-                        ld (gameinit), a
-
                         jp InitialiseFinished
 
 MainGameLoop:
                         halt
-
-                        jr GameLoopDraw
-
-GameLoopDrawFinished:
-
-                        jp GameLoopLogic
-
-GameLoopLogicFinished:
-
-                        ld a, (LevelBlockCount)
-                        and a
-                        jp z, LevelComplete
-
-                        ld a, (lives)
-                        and a
-                        jr z, GameOver
-
-                        jr MainGameLoop
-
-GameOver:
-                        xor a
-                        ld (gameinit), a
-                        ld (currentlevel), a                    ; reset the level
-
-                        ld a, GAMEOVER_SCENE                    ; Show the game over scene
-                        ld (currentloop), a
-                        jp SwitchMainLoop
-
-; Loop through the bricks that need updated redrawing the space as appropriate
-GameLoopDraw:
-                        push ix
 
                         ld (GLDrawLoopStack+1), sp              ; Save the stack
 
@@ -137,8 +101,6 @@ GLDrawLoopStack:        ld sp, 0                                ; restore the st
                         ld hl, DrawCellList
                         ld (DrawCellListNext), hl               ; reset the DrawCells
 
-                        pop ix
-
                         ld a, 2
                         out (0xfe), a
 
@@ -147,15 +109,14 @@ GLDrawLoopStack:        ld sp, 0                                ; restore the st
                         ld a, 1
                         out (0xfe), a
 
-                        jp GameLoopDrawFinished
-
-GameLoopLogic:
+GameLoopDrawFinished:
                         ld ix, spritetable
 
                         call ProposeBallMove                            ; proposed ball coordinates in hl
 
-                        call CheckLoseBall
-                        jp z, LoseLife
+                        ld a, l
+                        cp 184                          ; Check if the ball is hitting the bottom
+                        jp z, LoseBall
 
                         call CheckBatCollision
 
@@ -170,19 +131,30 @@ GameLoopLogic:
 
                         ; call DrawVelocity
 
-                        call CommitBallMove
+                        call UpdateBallXY
                         call CommitBallPosition
 
-                        jp GameLoopLogicFinished
+GameLoopLogicFinished:
 
-LoseLife
-                        call ResetBallBat
-                        jp GameLoopLogicFinished
+                        ld a, (LevelBlockCount)                 ; check how many blocks are left
+                        and a
+                        jp z, LevelComplete                     ; 0? Level is complete
+
+                        ld a, (lives)                           ; Check how many lives left
+                        and a
+                        jr z, GameOver                          ; 0? Game over
+
+                        jp MainGameLoop                         ; Run loop again
+
+GameOver:
+                        xor a
+                        ld (currentlevel), a                    ; reset the level
+
+                        ld a, GAMEOVER_SCENE                    ; Show the game over scene
+                        ld (currentloop), a
+                        jp SwitchMainLoop
 
 LevelComplete:
-                        xor a
-                        ld (gameinit), a
-
                         ld a, (currentlevel)
                         inc a
                         ld (currentlevel), a
@@ -296,18 +268,8 @@ ProposeBallMoveX:
                         ld (proposedballx), a
                         ret
 
-; inputs: hl - proposed ball position
-CommitBallMove:
-                        ; ld hl, (proposedbally)
-                        call UpdateBallXY
-                        ret
-
-; input - ix set to spritetable
-CheckLoseBall:
-                        ld a, (ix+SPRITETABLE_Y)
-                        cp 184                          ; Check if the ball is hitting the bottom
-                        ret nz
-
+; trashes hl
+LoseBall:
                         call DrawLives
 
                         ld hl, lives
@@ -317,8 +279,10 @@ CheckLoseBall:
                         ld (bonusadder), a              ; Remove any bonus accrued
 
                         call DrawLives
-                        cp a                            ; set z to indicate a loss
-                        ret
+
+                        call ResetBallBat
+                        jp GameLoopLogicFinished
+
 
 ; LoadSprites - Load the sprite data into the sprite table. Always use index 0 for ball, index 1 for bat
 LoadSprites:
@@ -665,12 +629,11 @@ MoveBallToBat:
                         ret
 
 
+; Inputs: ix - point to spritetable
 CommitBatPosition:
-                        push de, hl, ix
-
-                        ld ix, spritetable + SPRITETABLE_SIZE
-                        ld hl, (ix+SPRITETABLE_DATA)
-                        ld de, (ix+SPRITETABLE_SCADD)
+                        push hl
+                        ld hl, (ix+SPRITETABLE_SIZE+SPRITETABLE_DATA)
+                        ld de, (ix+SPRITETABLE_SIZE+SPRITETABLE_SCADD)
 
                         ld a, d                         ; convert pixel addr -> attribute addr
                         or 0x87                         ; see https://spectrumcomputing.co.uk/forums/viewtopic.php?t=3070
@@ -685,28 +648,23 @@ CommitBatPosition:
                         inc de
                         call AddCell
 
-                        pop ix, hl, de
+
+                        pop hl
                         ret
 
+; Inputs: ix - point to spritetable
 CommitBallPosition:
-                        push de, hl, ix
+                        push hl
 
-                        ld ix, spritetable
                         ld hl, (ix+SPRITETABLE_DATA)
                         ld de, (ix+SPRITETABLE_SCADD)
 
-                        exx
-                        ld hl, (ix+SPRITETABLE_Y)
-                        exx
-
-                        ld a, d
-                        or 0x87
-                        rra
+                        ld a, d                         ; convert high byte of screen address
+                        or 0x87                         ; to attr address
+                        rra                             
                         rra
                         srl a
                         ld d, a
-
-                        push bc
 
                         call AddCell
 
@@ -715,7 +673,6 @@ CommitBallPosition:
                         add hl, bc
                         ex de, hl
 
-                        ld c, 56
                         call AddCell
 
                         ld bc, 31
@@ -723,7 +680,6 @@ CommitBallPosition:
                         sbc hl, bc
                         ex de, hl
 
-                        ld c, 56
                         call AddCell
 
                         ld bc, 32
@@ -731,19 +687,16 @@ CommitBallPosition:
                         add hl, bc
                         ex de, hl
 
-                        ld c, 56
                         call AddCell
 
-                        pop bc
-
-                        pop ix, hl, de
+                        pop hl
                         ret
 
 AddBGCell:
                         ld a, 5
                         out (0xfe), a
 
-                        push bc, de, hl
+                        push de, hl
 
                         ld hl, UsedCellMap - ATTR_BASE
                         add hl, de                      ; Get the cell position
@@ -807,7 +760,7 @@ AddBGCell:
                         ld (DrawCellListNext), de
 
 AddBGCellComplete:
-                        pop hl, de, bc
+                        pop hl, de
 
                         ld a, 1
                         out (0xfe), a
