@@ -88,18 +88,17 @@ LEVELDATA_DATA          EQU 3
 ; sprite table, enough space for 2 sprites on screen
 ; Flags: bit 1 - active
 ;        bit 2 - size (0 - 8x8, 1 - 16x8)
-SPRITETABLE_FLAGS       EQU 0
-SPRITETABLE_Y           EQU 1                       ; 8bit y
-SPRITETABLE_X           EQU 2                       ; 8bit x
-SPRITETABLE_OLD_SCADD   EQU 3                       ; where the old sprite was drawn
-SPRITETABLE_PRESHIFT    EQU 5                       ; data table
-SPRITETABLE_DATA        EQU 7                       ; current sprite shifted data
-SPRITETABLE_SCADD       EQU 9                       ; where the new sprite will be drawn
-SPRITETABLE_OLD_DATA    EQU 11                      ; old sprite shifted data
-SPRITETABLE_OLD_X       EQU 13                      ; old 8bit x - should change to shift offset
-SPRITETABLE_Y16         EQU 14                      ; 16bit y - high byte is pixel coord, low is fractional
-SPRITETABLE_X16         EQU 16                      ; 16bit x
-SPRITETABLE_SIZE        EQU 18
+; SPRITETABLE_FLAGS       EQU 0
+SPRITETABLE_Y           EQU 0                       ; 8bit y
+SPRITETABLE_X           EQU 1                       ; 8bit x
+SPRITETABLE_PRESHIFT    EQU 2                       ; data table
+SPRITETABLE_DATA        EQU 4                       ; current sprite shifted data
+SPRITETABLE_SCADD       EQU 6                       ; where the new sprite will be drawn
+; SPRITETABLE_OLD_DATA    EQU 11                      ; old sprite shifted data
+; SPRITETABLE_OLD_X       EQU 13                      ; old 8bit x - should change to shift offset
+SPRITETABLE_Y16         EQU 8                      ; 16bit y - high byte is pixel coord, low is fractional
+SPRITETABLE_X16         EQU 10                      ; 16bit x
+SPRITETABLE_SIZE        EQU 12
 
 spritetable:            block SPRITETABLE_SIZE * MAX_SPRITES
 

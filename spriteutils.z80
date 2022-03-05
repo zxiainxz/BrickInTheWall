@@ -377,18 +377,19 @@ CheckX6v16x6v8:
                         cp a
                         ret
 
+; Inputs: ix - points to ball sprite entry
 UpdateBallXY:
-                        push hl
-
                         ld (ix+SPRITETABLE_Y), hl
 
                         call scadd
                         ld (ix+SPRITETABLE_SCADD), de
 
-                        ld de, (ix+SPRITETABLE_PRESHIFT)
-
                         ld a, h
                         and 7
+
+                        exx
+
+                        ld de, (ix+SPRITETABLE_PRESHIFT)
 
                         ld h, 0
                         ld l, a
@@ -403,52 +404,41 @@ UpdateBallXY:
 
                         ex de, hl               ; de now contains the x offset ball data
 
-                        pop hl
+                        exx
 
                         ld a, l
                         and 7
                         
-                        push bc
+                        exx
                         
                         ld b, a
                         ld a, 8
                         sub b
-                        
-                        pop bc
 
-                        push hl
                         ld h, 0
                         ld l, a
 
-                        ex de, hl
                         add hl, de
 
                         ld (ix+SPRITETABLE_DATA), hl
 
-                        pop hl
+                        exx
                         ret
 
 ; ix - sprite location
 ; hl - x,y
 UpdateSpriteXY:
-                        push hl
-                        or a
-                        ld de, (ix+SPRITETABLE_Y)
-                        sbc hl, de
-                        pop hl
-                        ret z
+                        ex de, hl                   ; Switch hl to de so that hl is preserved (faster than push pop)
+                        or a                        ; clear carry flag
+                        ld hl, (ix+SPRITETABLE_Y)   ; get x,y
+                        sbc hl, de                  ; compare
+
+                        ex de, hl                   ; switch back to restore hl
+                        ret z                       ; return if equal
 
                         push hl
-                        ld a, (ix+SPRITETABLE_X)
-                        ld (ix+SPRITETABLE_OLD_X), a
 
                         ld (ix+SPRITETABLE_Y), hl
-
-                        ld de, (ix+SPRITETABLE_SCADD)
-                        ld (ix+SPRITETABLE_OLD_SCADD), de
-
-                        ld de, (ix+SPRITETABLE_DATA)
-                        ld (ix+SPRITETABLE_OLD_DATA), de
 
                         call scadd
                         ld (ix+SPRITETABLE_SCADD), de
@@ -470,6 +460,7 @@ UpdateSpriteXY:
                         ld l, a
 
                         ld (ix+SPRITETABLE_DATA), hl
+
                         pop hl
                         ret
 
@@ -479,7 +470,7 @@ InitialliseSpriteTable:
 InitNextSprite:
                         xor a
 
-                        ld (ix+SPRITETABLE_FLAGS), a
+                        ld (ix+SPRITETABLE_Y), a
 
                         ld de, SPRITETABLE_SIZE
                         add ix, de

@@ -287,8 +287,6 @@ LoseBall:
 ; LoadSprites - Load the sprite data into the sprite table. Always use index 0 for ball, index 1 for bat
 LoadSprites:
                         ld ix, spritetable
-                        ld a, 1
-                        ld (ix+SPRITETABLE_FLAGS), a
 
                         ld hl, ball8x8Data
                         ld (ix+SPRITETABLE_PRESHIFT), hl
@@ -297,12 +295,6 @@ LoadSprites:
                         ld (proposedbally), hl
                         ld (oldbally), hl
                         call UpdateBallXY
-                        ld (ix+SPRITETABLE_OLD_X), l
-
-                        ld hl, (ix+SPRITETABLE_SCADD)
-                        ld (ix+SPRITETABLE_OLD_SCADD), hl
-                        ld de, (ix+SPRITETABLE_DATA)
-                        ld (ix+SPRITETABLE_OLD_DATA), de
 
                         call CommitBallPosition
 
@@ -310,20 +302,12 @@ LoadSprites:
                         add ix, de
 
                         ; bat
-                        ld a, 3
-                        ld (ix+SPRITETABLE_FLAGS), a
 
                         ld hl, bat16x8Data
                         ld (ix+SPRITETABLE_PRESHIFT), hl
 
                         ld hl, INITIAL_BAT_COORDS
                         call UpdateSpriteXY
-                        ld (ix+SPRITETABLE_OLD_X), l
-
-                        ld hl, (ix+SPRITETABLE_SCADD)
-                        ld (ix+SPRITETABLE_OLD_SCADD), hl
-                        ld de, (ix+SPRITETABLE_DATA)
-                        ld (ix+SPRITETABLE_OLD_DATA), de
 
                         ld h, INITIAL_BAT_X
                         ld l, 0
@@ -331,6 +315,7 @@ LoadSprites:
                         ld h, INITIAL_BAT_Y
                         ld (ix+SPRITETABLE_Y16), hl
 
+                        ld ix, spritetable
                         call CommitBatPosition
                         ret
 
@@ -647,7 +632,6 @@ CommitBatPosition:
                         call AddCell
                         inc de
                         call AddCell
-
 
                         pop hl
                         ret
