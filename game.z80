@@ -228,9 +228,9 @@ DrawLife:
                         pop af
                         pop de
 
-                        di
-                        call DrawSprite16x8PreShiftCharRow
-                        ei
+                        ; di
+                        ; call DrawSprite16x8PreShiftCharRow
+                        ; ei
                         pop hl
 
                         ld d, 17
