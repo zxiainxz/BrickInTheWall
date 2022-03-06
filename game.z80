@@ -196,49 +196,71 @@ ResetBallBat:
                         ld (yballdir), hl
                         ret
 
+DrawLifeTable:          dw DrawLife1, DrawLife2, DrawLife3
 DrawLives:
                         ld a, (lives)
                         and a
                         ret z
 
-                        ld b, a
-                        ld hl, 0xCD00
-DrawLife:                        
-                        call scadd
-                        push hl, de
-
-                        ld de, bat16x8Data
-                        ld a, h
-
-                        push af
-
-                        and 7
-
+                        dec a
+                        add a, a
                         ld h, 0
                         ld l, a
-
-                        add hl, hl
-                        
+                        ld de, DrawLifeTable
                         add hl, de
+
                         ld a, (hl)
                         inc hl
                         ld h, (hl)
                         ld l, a
+                        jp (hl)
 
-                        pop af
+DrawLife3:
+                        ld de, SCREEN_BASE + 30
+                        ld hl, bat16x8Data0
+                        ld b, 2
+
+                        call DrawLife
+
+DrawLife2:
+                        ld de, SCREEN_BASE + 27
+                        ld hl, bat16x8Data7
+                        ld b, 3
+                        
+                        call DrawLife
+
+DrawLife1:
+                        ld de, SCREEN_BASE + 25
+                        ld hl, bat16x8Data6
+                        ld b, 3
+
+                        call DrawLife
+
+                        ret
+
+; inputs: de - screen address
+;         hl - data
+;         b  - iterations
+DrawLife:
+                        push de
+
+                        dup 7
+                        ld a, (de)
+                        xor (hl)
+                        ld (de), a
+                        inc hl
+                        inc d
+                        edup
+
+                        ld a, (de)
+                        xor (hl)
+                        ld (de), a
+                        inc hl
+
                         pop de
 
-                        ; di
-                        ; call DrawSprite16x8PreShiftCharRow
-                        ; ei
-                        pop hl
-
-                        ld d, 17
-                        ld e, 0
-                        add hl, de
-
+                        inc de
                         djnz DrawLife
-
                         ret
 
 ; Works out where the ball should move to

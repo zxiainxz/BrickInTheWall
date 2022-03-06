@@ -9,7 +9,6 @@ Code_Start:             EQU 0x7FFD
 
                         jp Main_Start                   ; skip any includes
 
-                        include "background.z80"
                         include "constants.z80"
                         include "data.z80"
                         include "fontutils.z80"
@@ -20,7 +19,6 @@ Code_Start:             EQU 0x7FFD
                         include "levelcompletescene.z80"
                         include "levelutils.z80"
                         include "mathutils.z80"
-                        include "random.z80"
                         include "scoreutils.z80"
                         include "screenutils.z80"
                         include "spriteutils.z80"

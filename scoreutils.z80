@@ -27,7 +27,6 @@ IncreaseScore0:
                         jr IncreaseScore0
 
 AddBrickScore:
-                        call DrawScore                          ; Erase the old score
                         call Add100                             ; Add the main 100 points
                         ld a, (bonusadder)
 
@@ -42,33 +41,25 @@ AddBonus:               call Add10
                         ret
 
 Add10:
-                        push hl
-                        push bc
+                        exx
                         ld hl, score+4
                         ld b, 1
                         call IncreaseScore
-                        pop bc
-                        pop hl
+                        exx
                         ret
 
 Add100:
-                        push hl
-                        push bc
+                        exx
                         ld hl, score+3
                         ld b, 1
                         call IncreaseScore
-                        pop bc
-                        pop hl
+                        exx
                         ret
 
 DrawScore:
-                        push hl
-                        push bc
-
+                        exx
                         ld hl, 0x3000
                         ld bc, score
                         call OverdrawString
-
-                        pop bc
-                        pop hl
+                        exx
                         ret
