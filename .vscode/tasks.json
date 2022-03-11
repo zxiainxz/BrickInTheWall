@@ -8,10 +8,13 @@
             "type": "shell",
             "command": "sjasmplus",    						
             "args": [
-				"--lst=${fileDirname}/${fileBasenameNoExtension}.lst",
-                "--sld=${fileDirname}/${fileBasenameNoExtension}.sld",
-                "--raw=${fileDirname}/${fileBasenameNoExtension}.raw",
+				//"--lst=${fileDirname}/${fileBasenameNoExtension}.lst",
+                //"--sld=${fileDirname}/${fileBasenameNoExtension}.sld",
+                //"--raw=${fileDirname}/${fileBasenameNoExtension.raw",
             	//"${file}"                                   
+                "--lst=main.lst",
+                "--sld=main.sld",
+                "--raw=main.raw",
                 "main.z80"
 			],
             "group": {

@@ -20,7 +20,7 @@
 			},
 			"sjasmplus": [
 				{
-					"path": "${fileBasenameNoExtension}.sld",
+					"path": "main.sld",
 				}
 			],
 			"commandsAfterLaunch": [
