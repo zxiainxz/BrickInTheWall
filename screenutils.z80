@@ -3,7 +3,7 @@
 ;         l - y coordinate
 ; outputs: address in de
 scadd:                  
-                        push af
+                        ex af, af'
 
                         ld a, l
                         ; ld e, a                 ; store y in e
@@ -42,7 +42,7 @@ scadd:
                         add a, e                ; add to total so far
                         ld e, a                 ; de = screen address
 
-                        pop af
+                        ex af, af'
                         
                         ret
 
@@ -261,4 +261,101 @@ CBBTS_SCREEN1:
                         
 CBBTS_SP:               ld sp, 0
                         exx
+                        ret
+
+; Draws the background to the back buffer, skipping the first char row
+; Inputs: hl - background data, 16x16, linear
+DrawBackground:
+                        ld (DB_SP+1), sp            ; store stack
+                        ld (DB_Reset+1), hl         ; store start of data
+                        ld b, 16                    ; height of background, could be param
+                        exx                         ; switch to shadow
+                        ld hl, BACKBUFFER_BASE + 32 ; set backbuffer, skip first char row
+DB_NextLine:
+                        exx                         ; switch to standard
+
+                        ld sp, hl                   ; load background to stack
+
+                        pop ix                      ; take two bytes
+
+                        inc hl                      ; skip over those two bytes
+                        inc hl
+
+                        dec b                       ; dec counter
+                        jr nz, DB_NoReset
+
+DB_Reset:               ld hl, 0                    ; reset hl to start of data
+                        ld b, 16                    ; reset counter
+DB_NoReset:
+
+                        exx                         ; switch to shadow
+
+                        ld (DB_Screen_HL+1), hl     ; store start of row
+
+                        ld de, 32
+                        add hl, de                  ; skip 32 bytes to the end of the row
+
+                        ld sp, hl                   ; set stack to end of row
+
+        .16             push ix                     ; push bg bytes across whole of the row
+
+DB_Screen_HL:           ld hl, 0                    ; restore the start of the row
+
+                        inc h                       ; find the next row
+                        ld a, h
+                        and 0x07
+                        jr nz, DB_NextLine
+
+                        ld a, h
+                        sub 8
+                        ld h, a
+                        ld a, l
+                        add a, 32
+                        ld l, a
+                        jr nc, DB_NextLine
+
+                        ld a, h
+                        add a, 8
+                        ld h, a
+
+                        cp BACKBUFFER_END_HIGH      ; stop if we're outside the buffer
+                        jr nz, DB_NextLine
+
+DB_SP:                  ld sp, 0                    ; restore stack
+                        exx                         ; back to normal registers
+
+                        ret
+
+; Inputs: hl - background
+;          e - attr low byte
+; Outputs: hl - background with offset
+; y - presense of 32 bit
+; x - presense of 1 bit
+; 5800 - 00 - 0 -    00000000
+; 5820 - 20 - 32 -   00100000
+; 5840 - 40 - 64 -   01000000
+; 5860 - 60 - 96 -   01100000
+; 5880 - 80 - 128 -  10000000
+; 58a0 - a0 - 160 -  10100000
+;      - c0 - 192 -  11000000
+;      - e0 - 224 -  11100000
+;
+;   01
+;   23
+;
+; y * 2 + x
+GetBGForCell:
+                        ld a, e
+                        and 1
+                        bit 5, e
+                        jr nz, GBGFC1
+                        or 2
+GBGFC1:
+                        sla a
+                        sla a
+                        sla a
+                        ld d, 0
+                        ld e, a
+                        add hl, de
+
                         ret

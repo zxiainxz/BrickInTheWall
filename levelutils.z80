@@ -292,11 +292,17 @@ DLRDB1:
                         pop de
 
 DrawNextBrickLine:
-                        ldi
-                        ldi
-
-                        dec de                           ; FIXME: Zigzag data?
+                        ld a, (de)
+                        or (hl)
+                        ld (de), a
+                        inc de
+                        inc hl
+                        ld a, (de)
+                        or (hl)
+                        ld (de), a
+                        inc hl
                         dec de
+
                         inc d
 
                         djnz DrawNextBrickLine
@@ -314,23 +320,20 @@ DrawNextBrickLine:
 
 ; de - screen address
 ; hl - sprite address
-DrawBrick:
+xDrawBrick:
                         ld bc, 0x0816
 DrawBrick1:
-                        ld a, (hl)
+                        ld a, (de)
+                        xor (hl)
                         ld (de), a
                         inc e
                         inc hl
-                        ld a, (hl)
+                        ld a, (de)
+                        xor (hl)
                         ld (de), a
                         dec e
                         inc d
                         inc hl
-                        ; ldi
-                        ; ldi
-                        ; inc d
-                        ; dec de
-                        ; dec de
 
                         djnz DrawBrick1
                         ret
@@ -643,8 +646,27 @@ AddUpdateBrick:
                         push bc, hl
 
                         call scadd
-                        ex de, hl                       ; screen addr in hl
+                        push de
 
+                        exx
+                        ex af, af'
+                        pop de
+
+                        ld a, d                         ; convert high byte of screen address
+                        or 0x87                         ; to attr address
+                        rra                             
+                        rra
+                        srl a
+                        ld d, a
+
+                        ld hl, bg116x16Data0
+                        call GetBGForCell
+
+                        ex af, af'
+                        exx
+
+
+                        ex de, hl                       ; screen addr in hl
                         ld de, ScreenBuffer - SCREEN_BASE       ; offset between screen address and buffer
                         add hl, de                              ; get address in buffer
                         
@@ -654,12 +676,38 @@ AddUpdateBrick:
                         ld bc, 16
 
                         dup 7                           ; update the brick sprite in the backbuffer
-        .2              ldi
+                        exx
+                        ld a, (hl)
+                        inc hl
+                        exx
+                        or (hl)
+                        ld (de), a
+                        inc hl
+                        inc de
+                        exx
+                        ld a, (hl)
+                        inc hl
+                        exx
+                        or (hl)
+                        ld (de), a
+                        inc hl
                         inc d
-        .2              dec de
+                        dec de
                         edup
 
-        .2              ldi
+                        exx
+                        ld a, (hl)
+                        inc hl
+                        exx
+                        or (hl)
+                        ld (de), a
+                        inc hl
+                        inc de
+                        exx
+                        ld a, (hl)
+                        exx
+                        or (hl)
+                        ld (de), a
 
                         pop hl
                         call pixelattradd

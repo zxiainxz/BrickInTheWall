@@ -172,6 +172,9 @@ StartLevel:
                         call ResetLevel
                         call LoadLevel
 
+                        ld hl, bg116x16Data0
+                        call DrawBackground
+
                         call DisplayLevel
                         call CopyBackBufferToScreen
 
@@ -198,38 +201,38 @@ ResetBallBat:
 
 DrawLifeTable:          dw DrawLife1, DrawLife2, DrawLife3
 DrawLives:
-                        ld a, (lives)
+                        ld a, (lives)                   ; check lives
                         and a
-                        ret z
+                        ret z                           ; 0? return
 
-                        dec a
-                        add a, a
+                        dec a                           ; 0 based array
+                        add a, a                        ; double because lut is word based
                         ld h, 0
-                        ld l, a
+                        ld l, a                         ; offset
                         ld de, DrawLifeTable
-                        add hl, de
+                        add hl, de                      ; index into LUT
 
                         ld a, (hl)
                         inc hl
                         ld h, (hl)
-                        ld l, a
-                        jp (hl)
+                        ld l, a                         ; load offset into hl
+                        jp (hl)                         ; jump to it
 
-DrawLife3:
+DrawLife3:                                              ; draw all three lives
                         ld de, SCREEN_BASE + 30
                         ld hl, bat16x8Data0
                         ld b, 2
 
                         call DrawLife
 
-DrawLife2:
+DrawLife2:                                              ; draw two lives
                         ld de, SCREEN_BASE + 27
                         ld hl, bat16x8Data7
                         ld b, 3
                         
                         call DrawLife
 
-DrawLife1:
+DrawLife1:                                               ; draw one life
                         ld de, SCREEN_BASE + 25
                         ld hl, bat16x8Data6
                         ld b, 3
@@ -239,13 +242,13 @@ DrawLife1:
                         ret
 
 ; inputs: de - screen address
-;         hl - data
+;         hl - data for bat, stored in column order
 ;         b  - iterations
 DrawLife:
-                        push de
+                        push de                 ; store initial screen address
 
                         dup 7
-                        ld a, (de)
+                        ld a, (de)              ; draw each row of the cell
                         xor (hl)
                         ld (de), a
                         inc hl
@@ -257,9 +260,9 @@ DrawLife:
                         ld (de), a
                         inc hl
 
-                        pop de
+                        pop de                  ; restore initial screen address
 
-                        inc de
+                        inc de                  ; move to next cell
                         djnz DrawLife
                         ret
 
@@ -826,7 +829,7 @@ AddCell:
                         and d
                         ld (hl), a                      ; store high byte
                         inc hl
-;---
+
                         push hl
                         ld h, a
                         ld l, e
