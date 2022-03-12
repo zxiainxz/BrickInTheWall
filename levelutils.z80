@@ -267,10 +267,8 @@ DrawNextBrick:
 
                         ld a, (hl)
                         cp 16
-                        jr c, DLRDB1
-                        ld a, 16
-DLRDB1:
                         inc hl
+                        jr nc, DrawFullBrick
 
                         push de
 
@@ -307,9 +305,11 @@ DrawNextBrickLine:
 
                         djnz DrawNextBrickLine
 
-                        push de
+                        push de ; needed?
                         exx
-                        pop de
+                        pop de  ; needed?
+
+DRMoveToNext:
                         pop de
                         inc de
                         inc de
@@ -318,25 +318,24 @@ DrawNextBrickLine:
                         pop de, bc
                         ret
 
-; de - screen address
-; hl - sprite address
-xDrawBrick:
+DrawFullBrick:
+                        push de
+                        exx
                         ld bc, 0x0816
-DrawBrick1:
-                        ld a, (de)
-                        xor (hl)
-                        ld (de), a
-                        inc e
-                        inc hl
-                        ld a, (de)
-                        xor (hl)
-                        ld (de), a
-                        dec e
-                        inc d
-                        inc hl
 
-                        djnz DrawBrick1
-                        ret
+                        pop de
+                        ld hl, brickData
+DFB1:                        
+        .2              ldi
+
+                        inc d
+        .2              dec de
+
+                        djnz DFB1
+
+                        exx
+
+                        jr DRMoveToNext
 
 ColourLevel:
                         ld hl, LevelMap
