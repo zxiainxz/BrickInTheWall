@@ -249,6 +249,7 @@ DrawLife:
 
                         dup 7
                         ld a, (de)              ; draw each row of the cell
+                        inc hl                  ; skip the mask byte
                         xor (hl)
                         ld (de), a
                         inc hl
@@ -256,6 +257,7 @@ DrawLife:
                         edup
 
                         ld a, (de)
+                        inc hl                  ; skip the mask byte
                         xor (hl)
                         ld (de), a
                         inc hl
@@ -652,8 +654,13 @@ CommitBatPosition:
                         srl a
                         ld d, a
 
+                        ld a, (ix+SPRITETABLE_SIZE+SPRITETABLE_X)               ; Load x value
+                        and 7                           ; if 0, then we only need to draw 2 cells
+                        jr z, CBPX0
+
                         call AddCell
                         inc de
+CBPX0:
                         call AddCell
                         inc de
                         call AddCell
@@ -663,6 +670,7 @@ CommitBatPosition:
 
 ; Inputs: ix - point to spritetable
 CommitBallPosition:
+                        ret
                         push hl
 
                         ld hl, (ix+SPRITETABLE_DATA)
@@ -784,7 +792,7 @@ AddCell:
                         ld a, 4
                         out (0xfe), a
 
-                        push bc, de, hl, hl
+                        push bc, de, hl
 
                         exx
                         pop hl
@@ -840,31 +848,36 @@ AddCell:
                         pop de                                  ; de - DrawCell address
 
                         dup 7
-                        ld a, (hl)
+                        ld a, (hl)                              ; background cell
 
                         exx
-                        or (hl)
+                        and (hl)                                ; and the mask
+                        inc hl
+                        or (hl)                                 ; or the sprite
                         inc hl
                         exx
 
-                        ld (de), a
+                        ld (de), a                              ; write it into the cell
                         inc de
                         inc h
                         edup
 
-                        ld a, (hl)
+                        ld a, (hl)                              ; background
                         exx
-                        or (hl)
+                        and (hl)                                ; mask
+                        inc hl
+                        or (hl)                                 ; sprite
+                        inc hl
+
+                        push hl                                 ; push the end of the sprite data to the stack
                         exx
 
-                        ld (de), a
+                        ld (de), a                              ; write to the cell
                         inc de
 
                         ld (DrawCellListNext), de
 
-                        pop hl
-                        ld de, 8
-                        add hl, de
+                        pop hl                                  ; retrieve the end of the sprite data from stack
 
                         pop de, bc
 

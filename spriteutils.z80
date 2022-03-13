@@ -185,28 +185,28 @@ UpdateSpriteXY:
 
                         push hl
 
-                        ld (ix+SPRITETABLE_Y), hl
+                        ld (ix+SPRITETABLE_Y), hl   ; store x,y
 
-                        call scadd
-                        ld (ix+SPRITETABLE_SCADD), de
+                        call scadd                      ; convert to screen addr
+                        ld (ix+SPRITETABLE_SCADD), de   ; store screen addr
 
-                        ld a, h
+                        ld a, h                         ; get the X cell offset
                         and 7
 
-                        ld de, (ix+SPRITETABLE_PRESHIFT)
+                        ld de, (ix+SPRITETABLE_PRESHIFT)        ; load the lookup table
 
                         ld h, 0
-                        ld l, a
+                        ld l, a                                 ; which entry do we need
 
-                        add hl, hl
+                        add hl, hl                              ; double it as it's word addressed
                         
-                        add hl, de
-                        ld a, (hl)
+                        add hl, de                              ; point hl to entry
+                        ld a, (hl)                              ; copy entry into hl
                         inc hl
                         ld h, (hl)
                         ld l, a
 
-                        ld (ix+SPRITETABLE_DATA), hl
+                        ld (ix+SPRITETABLE_DATA), hl            ; store the entry
 
                         pop hl
                         ret
