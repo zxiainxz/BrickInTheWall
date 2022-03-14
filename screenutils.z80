@@ -271,6 +271,7 @@ DrawBackground:
                         ld b, 16                    ; height of background, could be param
                         exx                         ; switch to shadow
                         ld hl, BACKBUFFER_BASE + 32 ; set backbuffer, skip first char row
+                        ; ld hl, SCREEN_BASE + 32
 DB_NextLine:
                         exx                         ; switch to standard
 
@@ -319,7 +320,8 @@ DB_Screen_HL:           ld hl, 0                    ; restore the start of the r
                         ld h, a
 
                         cp BACKBUFFER_END_HIGH      ; stop if we're outside the buffer
-                        jr nz, DB_NextLine
+                        ; cp SCREEN_END_HIGH
+                        jp nz, DB_NextLine
 
 DB_SP:                  ld sp, 0                    ; restore stack
                         exx                         ; back to normal registers

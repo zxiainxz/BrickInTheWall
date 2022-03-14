@@ -175,7 +175,7 @@ StartLevel:
                         ld hl, bg116x16Data0
                         call DrawBackground
 
-                        call DisplayLevel
+                        ; call DisplayLevel
                         call CopyBackBufferToScreen
 
                         ret
@@ -670,7 +670,6 @@ CBPX0:
 
 ; Inputs: ix - point to spritetable
 CommitBallPosition:
-                        ret
                         push hl
 
                         ld hl, (ix+SPRITETABLE_DATA)
@@ -901,10 +900,15 @@ ACCompositeCell:
 
                         ex hl, de
 
+                        exx
+                        push hl
+                        exx
                         pop hl
 
                         dup 7
                         ld a, (de)
+                        and (hl)
+                        inc hl
                         or (hl)
                         ld (de), a
                         inc hl
@@ -912,6 +916,8 @@ ACCompositeCell:
                         edup
 
                         ld a, (de)
+                        and (hl)
+                        inc hl
                         or (hl)
                         ld (de), a
                         inc hl
@@ -923,7 +929,7 @@ ACCompositeCell:
                         ret
 
 ACFull:
-                        pop hl, de, bc
+                        pop de, bc
 
                         ld a, 1
                         out (0xfe), a

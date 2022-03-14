@@ -162,6 +162,8 @@ UpdateBallXY:
                         ld a, 8
                         sub b
 
+                        add a, a
+
                         ld h, 0
                         ld l, a
 
