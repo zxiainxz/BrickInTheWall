@@ -116,7 +116,7 @@ GameLoopDrawFinished:
 
                         ld a, l
                         cp 184                          ; Check if the ball is hitting the bottom
-                        jp z, LoseBall
+                        jr z, LoseBall
 
                         call CheckBatCollision
 
@@ -138,13 +138,29 @@ GameLoopLogicFinished:
 
                         ld a, (LevelBlockCount)                 ; check how many blocks are left
                         and a
-                        jp z, LevelComplete                     ; 0? Level is complete
+                        jr z, LevelComplete                     ; 0? Level is complete
 
                         ld a, (lives)                           ; Check how many lives left
                         and a
                         jr z, GameOver                          ; 0? Game over
 
                         jp MainGameLoop                         ; Run loop again
+
+; trashes hl
+LoseBall:
+                        call DrawLives
+
+                        ld hl, lives
+                        dec (hl)
+
+                        xor a
+                        ld (bonusadder), a              ; Remove any bonus accrued
+
+                        call DrawLives
+
+                        call ResetBallBat
+                        jr GameLoopLogicFinished
+
 
 GameOver:
                         xor a
@@ -175,7 +191,7 @@ StartLevel:
                         ld hl, bg116x16Data0
                         call DrawBackground
 
-                        ; call DisplayLevel
+                        call DisplayLevel
                         call CopyBackBufferToScreen
 
                         ret
@@ -294,22 +310,6 @@ ProposeBallMoveX:
 
                         ld (proposedballx), a
                         ret
-
-; trashes hl
-LoseBall:
-                        call DrawLives
-
-                        ld hl, lives
-                        dec (hl)
-
-                        xor a
-                        ld (bonusadder), a              ; Remove any bonus accrued
-
-                        call DrawLives
-
-                        call ResetBallBat
-                        jp GameLoopLogicFinished
-
 
 ; LoadSprites - Load the sprite data into the sprite table. Always use index 0 for ball, index 1 for bat
 LoadSprites:
