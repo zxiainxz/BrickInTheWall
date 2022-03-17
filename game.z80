@@ -211,6 +211,13 @@ ResetBallBat:
                         ld h, a
                         call UpdateSpriteXY
 
+                        ld h, INITIAL_BAT_X
+                        ld l, 0
+                        ld (ix+SPRITETABLE_X16), hl
+                        ld h, INITIAL_BAT_Y
+                        ld (ix+SPRITETABLE_Y16), hl
+
+
                         ld hl, NULL
                         ld (yballdir), hl
                         ret
