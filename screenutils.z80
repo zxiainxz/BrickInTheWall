@@ -266,6 +266,8 @@ CBBTS_SP:               ld sp, 0
 ; Draws the background to the back buffer, skipping the first char row
 ; Inputs: hl - background data, 16x16, linear
 DrawBackground:
+                        di
+
                         ld (DB_SP+1), sp            ; store stack
                         ld (DB_Reset+1), hl         ; store start of data
                         ld b, 16                    ; height of background, could be param
@@ -326,6 +328,8 @@ DB_Screen_HL:           ld hl, 0                    ; restore the start of the r
 DB_SP:                  ld sp, 0                    ; restore stack
                         exx                         ; back to normal registers
 
+                        ei
+                        
                         ret
 
 ; Inputs: hl - background
