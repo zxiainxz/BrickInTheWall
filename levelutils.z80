@@ -124,10 +124,10 @@ LoadLevel:
                         ld (LevelBlockCount), a
                         ld c, 0
 
+                        ld de, LEVEL_HEADER_SIZE
+                        add ix, de                                      ; Put ix after level header
+
                         ld de, LevelMap
-                        inc ix                                          ; Put ix after the level name
-                        inc ix
-                        inc ix
 
 LoadNextBrick:
                         ld a, (ix)                                      ; check if ix is a colour command           

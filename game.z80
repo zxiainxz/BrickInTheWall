@@ -173,9 +173,20 @@ GameOver:
 LevelComplete:
                         ld a, (currentlevel)
                         inc a
+
+                        cp LEVEL_COUNT
+                        jr z, GameComplete
+
                         ld (currentlevel), a
 
                         ld a, LEVELCOMPLETE_SCENE
+                        ld (currentloop), a
+                        jp SwitchMainLoop
+
+GameComplete:
+                        xor a
+                        ld (currentlevel), a
+                        ld a, START_SCENE
                         ld (currentloop), a
                         jp SwitchMainLoop
 
@@ -188,7 +199,7 @@ StartLevel:
                         call ResetLevel
                         call LoadLevel
 
-                        ld hl, bg116x16Data0
+                        ld hl, (currentbg)
                         call DrawBackground
 
                         call DisplayLevel

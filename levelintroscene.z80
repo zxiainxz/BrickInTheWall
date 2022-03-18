@@ -24,6 +24,10 @@ LevelStringReady:
                         call LoadCurrentLevel
                         inc ix
 
+                        ld c, (ix + 2)
+                        ld b, (ix + 3)
+                        ld (currentbg), bc
+
                         ld c, (ix)
                         ld b, (ix + 1)
 

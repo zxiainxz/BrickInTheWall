@@ -1,16 +1,5 @@
 ; Sprites
 
-; ball8x8Data:            dw ball8x8Data0, ball8x8Data1, ball8x8Data2, ball8x8Data3, ball8x8Data4, ball8x8Data5, ball8x8Data6, ball8x8Data7
-; ball8x8Data0: db 0, 0, 0, 0, 0, 0, 0, 0,  24, 102, 82, 161, 129, 66, 102, 24,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0
-; ball8x8Data1: db 0, 0, 0, 0, 0, 0, 0, 0,  12, 51, 41, 80, 64, 33, 51, 12,      0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 128, 128, 0, 0, 0
-; ball8x8Data2: db 0, 0, 0, 0, 0, 0, 0, 0,  6, 25, 20, 40, 32, 16, 25, 6,        0, 0, 0, 0, 0, 0, 0, 0,  0, 128, 128, 64, 64, 128, 128, 0
-; ball8x8Data3: db 0, 0, 0, 0, 0, 0, 0, 0,  3, 12, 10, 20, 16, 8, 12, 3,         0, 0, 0, 0, 0, 0, 0, 0,  0, 192, 64, 32, 32, 64, 192, 0
-; ball8x8Data4: db 0, 0, 0, 0, 0, 0, 0, 0,  1, 6, 5, 10, 8, 4, 6, 1,             0, 0, 0, 0, 0, 0, 0, 0,  128, 96, 32, 16, 16, 32, 96, 128
-; ball8x8Data5: db 0, 0, 0, 0, 0, 0, 0, 0,  0, 3, 2, 5, 4, 2, 3, 0,              0, 0, 0, 0, 0, 0, 0, 0,  192, 48, 144, 8, 8, 16, 48, 192
-; ball8x8Data6: db 0, 0, 0, 0, 0, 0, 0, 0,  0, 1, 1, 2, 2, 1, 1, 0,              0, 0, 0, 0, 0, 0, 0, 0,  96, 152, 72, 132, 4, 8, 152, 96
-; ball8x8Data7: db 0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 1, 1, 0, 0, 0,              0, 0, 0, 0, 0, 0, 0, 0,  48, 204, 164, 66, 2, 132, 204, 48
-; ballspacing:  db 0, 0, 0, 0, 0, 0, 0, 0
-
 ; File - ../../breakthru/sprites/ball-8x8.gif
 ; Mask file - ../../breakthru/sprites/ball-mask-8x8.gif
 ; Order - column
@@ -40,12 +29,14 @@ bat16x8Data5: db 254, 1, 252, 2, 248, 4, 248, 5, 248, 5, 248, 4, 252, 2, 254, 1,
 bat16x8Data6: db 255, 0, 254, 1, 252, 2, 252, 2, 252, 2, 252, 2, 254, 1, 255, 0, 0, 255, 0, 16, 0, 111, 0, 223, 0, 160, 0, 38, 0, 32, 0, 255, 15, 240, 7, 136, 3, 100, 3, 180, 3, 84, 3, 68, 7, 72, 15, 240
 bat16x8Data7: db 255, 0, 255, 0, 254, 1, 254, 1, 254, 1, 254, 1, 255, 0, 255, 0, 128, 127, 0, 136, 0, 55, 0, 111, 0, 80, 0, 19, 0, 144, 128, 127, 7, 248, 3, 68, 1, 178, 1, 218, 1, 42, 1, 34, 3, 36, 7, 248
 
+; Bricks
+
 ; left = 8
 ; right = 4
 ; top = 2
 ; bottom = 1
 
-brickTable: dw brickoutlineDataBlank, brickoutlineDataBottom, brickoutlineDataTop, brickoutlineDataTopBottom, brickoutlineDataRight, brickoutlineDataBottomRight, brickoutlineDataTopRight, brickoutlineDataTopBottomRight, brickoutlineDataLeft, brickoutlineDataBottomLeft, brickoutlineDataTopLeft, brickoutlineDataTopBottomLeft, brickoutlineDataLeftRight, brickoutlineDataBottomLeftRight, brickoutlineDataTopLeftRight, brickoutlineDataTopBottomLeftRight, brickData
+brickTable: dw brickoutlineDataBlank, brickoutlineDataBottom, brickoutlineDataTop, brickoutlineDataTopBottom, brickoutlineDataRight, brickoutlineDataBottomRight, brickoutlineDataTopRight, brickoutlineDataTopBottomRight, brickoutlineDataLeft, brickoutlineDataBottomLeft, brickoutlineDataTopLeft, brickoutlineDataTopBottomLeft, brickoutlineDataLeftRight, brickoutlineDataBottomLeftRight, brickoutlineDataTopLeftRight, brickoutlineDataTopBottomLeftRight
 
 brickData: db 255, 254, 128, 0, 128, 0, 128, 0, 128, 0, 128, 0, 128, 0, 0, 0
 
@@ -96,7 +87,8 @@ batvelocity:            dw 0
 
 lives:                  db INITIAL_LIVES
 
-currentlevel:           db 1
+currentlevel:           db 0
+currentbg:              dw 0
 
 ; level data
 ; number blocks, name, data = 5 bytes
