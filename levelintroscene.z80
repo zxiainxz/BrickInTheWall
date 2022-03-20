@@ -28,6 +28,9 @@ LevelStringReady:
                         ld b, (ix + 3)
                         ld (currentbg), bc
 
+                        ld a, (ix+4)
+                        ld (currentbgattr), a
+
                         ld c, (ix)
                         ld b, (ix + 1)
 

@@ -146,6 +146,14 @@ ClearAttrs:
                         ldir
                         ret
 
+; a - attr value
+ClearPlayfield:
+                        ld hl, $5820
+                        ld de, $5821
+                        ld bc, 767 - 32
+                        ld (hl), a
+                        ldir
+                        ret
 FadeScreenToWhite:
                         call ClearAttrs
                         ld bc, 0x0800
@@ -196,77 +204,82 @@ ClearRow
                         pop af
                         ret
 
+; Fast copy the whole of the back buffer to the screen
 CopyBackBufferToScreen:
-                        ld (CBBTS_SP+1), sp
+                        di                              ; messes with stack
 
-                        ld hl, BACKBUFFER_BASE
+                        ld (CBBTS_SP+1), sp             ; store original stack
+
+                        ld hl, BACKBUFFER_BASE          ; hl points to buffer
                         exx
-                        ld hl, SCREEN_BASE
+                        ld hl, SCREEN_BASE              ; hl' points to screen
 CBBTS_NextLine:
                         exx
 
-                        ld sp, hl
+                        ld sp, hl                       ; point stack at the back buffer
 
-                        pop af, bc, de, ix
+                        pop af, bc, de, ix              ; load 8 bytes from back buffer
 
                         exx
                         ex af, af'
 
-                        ld de, 16
+                        ld de, 16                       ; move screen pointer on 16 bytes
                         add hl, de
 
-                        pop af, bc, de, iy
+                        pop af, bc, de, iy              ; load another 8 bytes from back buffer
 
-                        ld (CBBTS_BUFFER1+1), sp
+                        ld (CBBTS_BUFFER1+1), sp        ; store current buffer position for later
 
-                        ld sp, hl
-                        push iy, de, bc, af
+                        ld sp, hl                       ; point stack at screen
+                        push iy, de, bc, af             ; push 8 bytes
 
                         ex af, af'
                         exx
 
-                        push ix, de, bc, af
+                        push ix, de, bc, af             ; push next 8 bytes
 
 CBBTS_BUFFER1:
-                        ld hl, 0
-                        ld sp, hl
+                        ld hl, 0                        ;
+                        ld sp, hl                       ; restore stack to buffer
 
-                        pop af, bc, de, ix
+                        pop af, bc, de, ix              ; load next 8 bytes
                         exx
                         ex af, af'
 
                         ld de, 16
-                        add hl, de
+                        add hl, de                      ; move screen on 16bytes
 
-                        pop af, bc, de, iy
+                        pop af, bc, de, iy              ; load next 8 bytes
 
-                        ld (CBBTS_BUFFER2+1), sp
-                        ld sp, hl
+                        ld (CBBTS_BUFFER2+1), sp        ; store buffer position
+                        ld sp, hl                       ; point stack at screen
 
-                        push iy, de, bc, af
+                        push iy, de, bc, af             ; push 8 bytes
 
                         ex af, af'
                         exx
 
-                        push ix, de, bc, af
+                        push ix, de, bc, af             ; push next 8 bytes
 
 CBBTS_BUFFER2:
-                        ld hl, 0
+                        ld hl, 0                        ; restore buffer position
                         exx
 
 CBBTS_SCREEN1:
                         ld a, h
-                        cp 0x58
-                        jr nz, CBBTS_NextLine
+                        cp BACKBUFFER_END_HIGH          ; check that buffer hasn't hit the end
+                        jr nz, CBBTS_NextLine           ; do next 32 bytes
                         
-CBBTS_SP:               ld sp, 0
-                        exx
+CBBTS_SP:               ld sp, 0                        ; restore stack
+                        exx                             
+
+                        ei                              ; restore interrupts
                         ret
 
 ; Draws the background to the back buffer, skipping the first char row
 ; Inputs: hl - background data, 16x16, linear
 DrawBackground:
-                        di
+                        di                          ; messes with the stack, so disable interrupts
 
                         ld (DB_SP+1), sp            ; store stack
                         ld (DB_Reset+1), hl         ; store start of data
@@ -328,7 +341,7 @@ DB_Screen_HL:           ld hl, 0                    ; restore the start of the r
 DB_SP:                  ld sp, 0                    ; restore stack
                         exx                         ; back to normal registers
 
-                        ei
+                        ei                              ; restore interrupts again
                         
                         ret
 
@@ -351,17 +364,307 @@ DB_SP:                  ld sp, 0                    ; restore stack
 ;
 ; y * 2 + x
 GetBGForCell:
-                        ld a, e
-                        and 1
-                        bit 5, e
-                        jr nz, GBGFC1
-                        or 2
+                        ld a, e                 ; load low attr byte
+                        and 1                   ; set the x value
+                        bit 5, e                ; check the y bit in e
+                        jr nz, GBGFC1           
+                        or 2                    ; if present, set the second bit in a
 GBGFC1:
-                        sla a
+                        sla a                   ; multiple by 8 to get byte offset
                         sla a
                         sla a
                         ld d, 0
                         ld e, a
-                        add hl, de
+                        add hl, de              ; hl points at the correct part of background
 
                         ret
+
+; Add a background cell that doesn't need anything composited over it
+; it just marks that cell for updating and copies the backbuffer as data
+; inputs: de - cell address
+AddBGCell:
+                        ld a, 5
+                        out (0xfe), a
+
+                        push de, hl
+
+                        ld hl, UsedCellMap - ATTR_BASE
+                        add hl, de                      ; Get the cell position
+
+                        ld a, (hl)                      ; Check if it's already in use
+                        cp 255
+                        jp nz, AddBGCellComplete
+                                                        ; Get a new cell
+                        ld a, (DrawCellCount)           ; Check if there is one free
+                        cp MAX_CELLS
+                        jp nc, AddBGCellComplete        ; None left
+                        ld (hl), a                      ; record the new cell in the map
+                        inc a                           ; increase the count
+                        ld (DrawCellCount), a           ; update the count
+
+                        push de                         ; Record new cell in used cell list
+                        ex de, hl                       ; swap de&hl - de now points to offset in UsedCellMap
+                        ld hl, (UsedCellListNext)       ; Store offset to UsedCellMap in UsedCellList
+                        ld (hl), e
+                        inc hl
+                        ld (hl), d
+                        inc hl
+                        ld (UsedCellListNext), hl       ; Update the list
+                        pop de                          ; restore de to attribute addr
+
+                        ; Fill in new cell record
+                        ld hl, (DrawCellListNext)
+                        ld (hl), e                      ; Store attribute addr
+                        inc hl
+                        ld (hl), d
+                        inc hl
+                        inc hl
+
+                        ld a, d                         ; convert the highbyte of attr addr to screen addr
+                        add a
+                        add a
+                        add a
+                        and d
+                        ld (hl), a                      ; store high byte
+                        inc hl
+
+                        push hl
+                        ld h, a                         ; hl is screen address
+                        ld l, e
+
+                        ld de, ScreenBuffer - SCREEN_BASE       ; offset between screen address and buffer
+                        add hl, de                              ; get address in buffer
+
+                        pop de                                  ; de - DrawCell address
+
+                        dup 7
+                        ld a, (hl)
+                        ld (de), a
+                        inc de
+                        inc h
+                        edup
+                        ld a, (hl)
+                        ld (de), a
+                        inc de
+
+                        ld (DrawCellListNext), de
+
+AddBGCellComplete:
+                        pop hl, de
+
+                        ld a, 1
+                        out (0xfe), a
+
+                        ret
+
+; hl - sprite data
+; de - attr address
+
+; returns - hl + 8
+AddCell:
+                        ld a, 4
+                        out (0xfe), a
+
+                        push bc, de, hl
+
+                        exx
+                        pop hl
+                        exx
+
+                        ld hl, UsedCellMap - ATTR_BASE
+                        add hl, de                      ; Get the cell position
+
+                        ld a, (hl)                      ; Check if it's already in use
+                        cp 255
+                        jp nz, ACCompositeCell
+                                                        ; Get a new cell
+                        ld a, (DrawCellCount)           ; Check if there is one free
+                        cp MAX_CELLS
+                        jp nc, ACFull                   ; None left
+                        ld (hl), a                      ; record the new cell in the map
+                        inc a                           ; increase the count
+                        ld (DrawCellCount), a           ; update the count
+
+                        push de                         ; Record new cell in used cell list
+                        ex de, hl                       ; swap de&hl - de now points to offset in UsedCellMap
+                        ld hl, (UsedCellListNext)       ; Store offset to UsedCellMap in UsedCellList
+                        ld (hl), e
+                        inc hl
+                        ld (hl), d
+                        inc hl
+                        ld (UsedCellListNext), hl       ; Update the list
+                        pop de                          ; restore de to attribute addr
+
+                        ; Fill in new cell record
+                        ld hl, (DrawCellListNext)
+                        ld (hl), e                      ; Store attribute addr
+                        inc hl
+                        ld (hl), d
+                        inc hl
+                        inc hl
+
+                        ld a, d                         ; convert the highbyte of attr addr to screen addr
+                        add a
+                        add a
+                        add a
+                        and d
+                        ld (hl), a                      ; store high byte
+                        inc hl
+
+                        push hl
+                        ld h, a
+                        ld l, e
+
+                        ld de, ScreenBuffer - SCREEN_BASE       ; offset between screen address and buffer
+                        add hl, de                              ; get address in buffer
+
+                        pop de                                  ; de - DrawCell address
+
+                        dup 7
+                        ld a, (hl)                              ; background cell
+
+                        exx
+                        and (hl)                                ; and the mask
+                        inc hl
+                        or (hl)                                 ; or the sprite
+                        inc hl
+                        exx
+
+                        ld (de), a                              ; write it into the cell
+                        inc de
+                        inc h
+                        edup
+
+                        ld a, (hl)                              ; background
+                        exx
+                        and (hl)                                ; mask
+                        inc hl
+                        or (hl)                                 ; sprite
+                        inc hl
+
+                        push hl                                 ; push the end of the sprite data to the stack
+                        exx
+
+                        ld (de), a                              ; write to the cell
+                        inc de
+
+                        ld (DrawCellListNext), de
+
+                        pop hl                                  ; retrieve the end of the sprite data from stack
+
+                        pop de, bc
+
+                        ld a, 1
+                        out (0xfe), a
+
+                        ret
+
+ACCompositeCell:
+                        ld h, 0                         ; a * 12
+                        ld l, a
+                        add hl, hl
+                        add hl, hl
+                        ld d, h
+                        ld e, l
+                        add hl, hl
+                        add hl, de
+
+                        ld de, DrawCellList + 4
+                        add hl, de
+
+                        ex hl, de
+
+                        exx
+                        push hl
+                        exx
+                        pop hl
+
+                        dup 7
+                        ld a, (de)
+                        and (hl)
+                        inc hl
+                        or (hl)
+                        ld (de), a
+                        inc hl
+                        inc de
+                        edup
+
+                        ld a, (de)
+                        and (hl)
+                        inc hl
+                        or (hl)
+                        ld (de), a
+                        inc hl
+
+                        pop de, bc
+                        ld a, 1
+                        out (0xfe), a
+
+                        ret
+
+ACFull:
+                        pop de, bc
+
+                        ld a, 1
+                        out (0xfe), a
+
+                        ret
+
+
+ClearCells:
+                        ld a, (DrawCellCount)                   ; how many draw cells?
+                        and a
+                        ret z                                   ; 0? ret
+
+                        ld b, a
+                        ld hl, UsedCellList
+                        ld a, 255
+
+CCClearUsedCell:
+                        ld e, (hl)
+                        inc hl
+                        ld d, (hl)
+                        inc hl
+                        ld (de), a
+
+                        djnz CCClearUsedCell
+
+                        ld a, (DrawCellCount)
+                        ld b, a
+
+                        ld hl, DrawCellList
+
+                        ld de, ClearCellList
+
+CCClearCell:
+                        dup 3
+                        ld a, (hl)                              ; Copy cell data to ClearCellList
+                        ld (de), a
+                        inc de
+                        inc hl
+                        edup
+
+                        ld a, (hl)
+                        ld (de), a
+                        inc de
+
+                        push de
+
+                        ld de, 9                                ; move DrawCell past data
+                        add hl, de
+
+                        pop de
+
+                        djnz CCClearCell                
+
+                        ld a, (DrawCellCount)
+                        ld (ClearCellCount), a
+
+                        xor a
+                        ld (DrawCellCount), a
+
+                        ld hl, UsedCellList
+                        ld (UsedCellListNext), hl
+
+                        ret
+

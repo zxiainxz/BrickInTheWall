@@ -2,19 +2,19 @@
 ; a - ascii code
 ; output - ix: char sprite
 GetChar:
-                        cp '9'+1
+                        cp '9'+1                        ; Check whether it's a number
                         jr c, NumberChar
 
-                        sub 'A'
+                        sub 'A'                         ; get an offset for the character
                         ld ix, fontCaps
                         jr CharDone
 
 NumberChar:
-                        sub '0'
+                        sub '0'                         ; Get an offset for the numbers
                         ld ix, fontNumbers
 CharDone:                        
 
-                        add a
+                        add a                           ; * 8 for sprite offset
                         add a
                         add a
 
@@ -22,7 +22,7 @@ CharDone:
                         ld d, 0
                         ld e, a
 
-                        add ix, de
+                        add ix, de                      ; ix as char sprite
                         pop de
 
                         ret

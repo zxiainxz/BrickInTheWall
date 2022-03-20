@@ -346,7 +346,7 @@ ColourNextBlock:
                         ld a, (hl)
                         bit 4, a
                         jr nz, DontChangeColour
-                        ld a, 56
+                        ld a, (currentbgattr)
                         jr ColourBlock
 DontChangeColour:
                         srl a
@@ -658,7 +658,7 @@ AddUpdateBrick:
                         srl a
                         ld d, a
 
-                        ld hl, bg116x16Data0
+                        ld hl, (currentbg)              ; set the current background
                         call GetBGForCell
 
                         ex af, af'
@@ -710,13 +710,13 @@ AddUpdateBrick:
 
                         pop hl
                         call pixelattradd
-                        ld a, 56
+                        ld a, (currentbgattr)
                         ld (de), a
 
                         call AddBGCell
                         inc de
 
-                        ld a, 56
+                        ld a, (currentbgattr)
                         ld (de), a
 
                         call AddBGCell

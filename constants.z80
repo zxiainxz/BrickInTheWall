@@ -14,6 +14,12 @@ BACKBUFFER_BASE                 EQU 0xA000
 BACKBUFFER_END_HIGH             EQU 0xB8
 ATTR_BASE                       EQU 0x5800
 
+SCREEN_HEIGHT                   EQU 192
+SCREEN_WIDTH                    EQU 256
+
+BALL_HEIGHT                     EQU 8
+BALL_WIDTH                      EQU 8
+
 NUMBER_ROWS                     EQU 5
 NUMBER_BRICKS_PER_ROW           EQU 16
 ROW_START                       EQU 32
@@ -21,14 +27,14 @@ NUMBER_BRICKS                   EQU NUMBER_ROWS * NUMBER_BRICKS_PER_ROW
 
 INITIAL_BALL_Y                  EQU 176
 INITIAL_BALL_X                  EQU 124
-INITIAL_BALL_COORDS             EQU 0x7cB0 //242, 32
+INITIAL_BALL_COORDS             EQU (INITIAL_BALL_X * 256) + INITIAL_BALL_Y
 
 INITIAL_BALL_Y_DIR              EQU -1
 INITIAL_BALL_X_DIR              EQU 1
 
 INITIAL_BAT_Y                   EQU 184 // 184
 INITIAL_BAT_X                   EQU 120
-INITIAL_BAT_COORDS              EQU 0x78B8
+INITIAL_BAT_COORDS              EQU (INITIAL_BAT_X * 256) + INITIAL_BAT_Y
 
 BAT_VELOCITY_DELTA              EQU 0x0040
 BAT_VELOCITY_MAX                EQU 3
