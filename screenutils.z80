@@ -206,7 +206,7 @@ ClearRow
 
 ; Fast copy the whole of the back buffer to the screen
 CopyBackBufferToScreen:
-                        di                              ; messes with stack
+                        ; di                              ; messes with stack
 
                         ld (CBBTS_SP+1), sp             ; store original stack
 
@@ -267,13 +267,13 @@ CBBTS_BUFFER2:
 
 CBBTS_SCREEN1:
                         ld a, h
-                        cp BACKBUFFER_END_HIGH          ; check that buffer hasn't hit the end
+                        cp SCREEN_END_HIGH              ; check that buffer hasn't hit the end
                         jr nz, CBBTS_NextLine           ; do next 32 bytes
                         
 CBBTS_SP:               ld sp, 0                        ; restore stack
                         exx                             
 
-                        ei                              ; restore interrupts
+                        ; ei                              ; restore interrupts
                         ret
 
 ; Draws the background to the back buffer, skipping the first char row

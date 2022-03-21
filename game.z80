@@ -357,7 +357,7 @@ LoadSprites:
 
                         ; bat
 
-                        ld hl, bat16x8Data
+                        ld hl, bat16x8Data                      ; set up the bat
                         ld (ix+SPRITETABLE_PRESHIFT), hl
 
                         ld hl, INITIAL_BAT_COORDS
@@ -365,9 +365,9 @@ LoadSprites:
 
                         ld h, INITIAL_BAT_X
                         ld l, 0
-                        ld (ix+SPRITETABLE_X16), hl
-                        ld h, INITIAL_BAT_Y
-                        ld (ix+SPRITETABLE_Y16), hl
+                        ld (ix+SPRITETABLE_X16), hl             ; bat uses 16bits for the coords
+                        ld h, INITIAL_BAT_Y                     ; high byte is the pixel coords
+                        ld (ix+SPRITETABLE_Y16), hl             ; low byte is the subpixel
 
                         ld ix, spritetable
                         call CommitBatPosition
