@@ -212,6 +212,7 @@ StartLevel:
                         call ClearPlayfield
 
                         call DisplayLevel                               ; draw the bricks
+                        call DisplayBorder
 
                         call CopyBackBufferToScreen                     ; copy everything to the main screen
 
@@ -377,8 +378,8 @@ LoadSprites:
 ; inputs: hl - ball x, y
 CheckBatCollision:
                         ld a, (yballdir)                ; If the ball isn't moving, it can't collide
-                        cp 1
-                        ret nz
+                        cp 0
+                        ret z
 
                         ld a, l                         ; Check if ball is near bat
                         cp INITIAL_BAT_Y - BALL_HEIGHT  ; this is when the bottom of the ball crosses the bat line
@@ -465,7 +466,7 @@ Ball_HitX:
 CheckYEdgeCollision:
                         ld a, (ix+SPRITETABLE_Y)
 
-                        cp 8                            ; Check if the ball is hitting the top
+                        cp 16                            ; Check if the ball is hitting the top
                         call z, Switch_YDir
                         jr z, Ball_HitY
                         ret
@@ -580,46 +581,46 @@ MoveBatRight:
                         ret
 
 UpdateBatPosition:
-                        push hl
+                        push hl                                 ; hl is always defined as ball x,y, so restore
 
-                        ld hl, (batvelocity)
-                        ld a, (batvelocitytarget)
+                        ld hl, (batvelocity)                    ; load the current velocity
+                        ld a, (batvelocitytarget)               ; load the velocity target
 
-                        cp h
-                        jr nz, UBP0
+                        cp h                                    ; compare the whole number to the target
+                        jr nz, UBP0                             ; not equal skip to update
 
-                        ld a, l
+                        ld a, l                                 ; compare fraction to 0
                         and a
-                        jr z, UBP1
+                        jr z, UBP1                              ; if zer0 then skip updating
 
 UBP0:
-                        ld de, (batvelocitydelta)
+                        ld de, (batvelocitydelta)               ; update the velocity by delta
                         add hl, de
                         ld (batvelocity), hl
 
 UBP1:
-                        ld a, h
+                        ld a, h                                  ; check if whole number is 0
                         and a
-                        jr nz, UBP3
+                        jr nz, UBP3                             ; not 0, so update the position
 
-                        ld a, l
-                        and a
+                        ld a, l                                 ; if whole and fraction are 0
+                        and a                                   ; the bat has finished moving
                         jr z, UBPFinished
 
 UBP3:
                         push ix
 
-                        ld ix, spritetable+SPRITETABLE_SIZE
-                        ld de, (ix+SPRITETABLE_X16)
+                        ld ix, spritetable+SPRITETABLE_SIZE     ; set ix to bat
+                        ld de, (ix+SPRITETABLE_X16)             ; update the x
                         ex de, hl
 
-                        add hl, de
+                        add hl, de                              ; new x in hl
 
-                        ld a, h
+                        ld a, h                                 ; compare whole value to 241 (256-16+1)
                         cp 241
-                        jr c, UBP2
+                        jr c, UBP2                              ; less than 241 so just update
 
-                        ex af, af'
+                        ex af, af'                              ; more than 241 and we stop any acceleration
                         xor a
                         ld hl, NULL
                         ld (batvelocity), hl
@@ -627,21 +628,22 @@ UBP3:
                         ld (batvelocitytarget), a
                         ex af, af'
 
-                        cp 255
-                        jr z, UBP2
-                        cp 250
-                        jr nc, UBP2
+                                                                ; this is to stop 0 looping
+                        cp 255                                  
+                        jr z, UBP2                              ; equal to 255, just skip
+                        cp 250                                  
+                        jr nc, UBP2                             ; >= 250, skip
 
-                        ld hl, 0xF000
+                        ld hl, 0xF000                           ; limits h to 240
 
 UBP2:
-                        ld (ix+SPRITETABLE_X16), hl
+                        ld (ix+SPRITETABLE_X16), hl             ; update x, y
 
                         ld l, (ix+SPRITETABLE_Y)
                         call UpdateSpriteXY
 
                         ld a, (yballdir)
-                        and a
+                        and a                                   ; if ball not mving, move ball to bat
                         pop ix
 
                         jr z, MoveBallToBat

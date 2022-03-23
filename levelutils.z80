@@ -341,13 +341,11 @@ ColourLevel:
                         ld hl, LevelMap
                         ld de, 0x5880
 
-                        ld bc, 255
+                        ld b, 255
 ColourNextBlock:
                         ld a, (hl)
                         bit 4, a
-                        jr nz, DontChangeColour
-                        ld a, (currentbgattr)
-                        jr ColourBlock
+                        jr z, SkipColour
 DontChangeColour:
                         srl a
                         srl a
@@ -361,6 +359,13 @@ ColourBlock:
 
                         djnz ColourNextBlock
                         ret
+
+SkipColour:             
+        .2              inc de
+                        inc hl
+                        djnz ColourNextBlock
+                        ret
+
 
 ; Inputs: hl - ball x, y
 CheckBrickCollision:
@@ -542,7 +547,7 @@ RemoveBrick
                         ; iy: brick in levelmap
                         ; hl: ball x,y
 
-                        push bc, de, ix
+                        push bc, de
 
                         res 0, (iy-16)
                         res 1, (iy+16)
@@ -551,7 +556,6 @@ RemoveBrick
                         res 4, (iy)                             ; Erase the brick
 
                         ld hl, bc
-                        ld ix, UpdateBricks
                         ld a, (iy)
                         and 15
 
@@ -631,7 +635,7 @@ RB4:
                         dec a
                         ld (LevelBlockCount), a
 
-                        pop ix, de, bc
+                        pop de, bc
                         ret
 
 ; a - brick code

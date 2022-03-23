@@ -66,13 +66,9 @@ bg116x16Data0: db 128, 1, 96, 6, 28, 56, 3, 192, 32, 4, 64, 2, 1, 128, 2, 64, 2,
 bg216x16Data0: db 255, 254, 128, 0, 160, 2, 128, 0, 128, 0, 128, 0, 128, 0, 128, 0, 128, 0, 128, 0, 128, 0, 128, 0, 128, 0, 128, 0, 160, 2, 0, 0
 bg316x16Data0: db 32, 4, 32, 4, 192, 3, 1, 128, 2, 64, 2, 64, 12, 48, 17, 136, 17, 136, 12, 48, 2, 64, 2, 64, 1, 128, 192, 3, 32, 4, 32, 4
 
-LevelBlockCount:        db 0
+bordertData0: db 255, 36, 153, 66, 66, 153, 36, 255
 
-UPDATEBRICKS_SIZE       EQU 6
-UPDATEBRICKS_ADDR       EQU 0               ; screen address
-UPDATEBRICKS_SPRITE     EQU 2               ; sprite address
-UPDATEBRICKS_ATTRADDR   EQU 4               ; attr address
-UpdateBricks:           block UPDATEBRICKS_SIZE * 5 + 2, 0  ; Enough for 5 blocks + 16bit null termination
+LevelBlockCount:        db 0
 
 ; variables
 yballdir:               db 0

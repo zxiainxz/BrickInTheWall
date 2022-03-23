@@ -285,7 +285,7 @@ DrawBackground:
                         ld (DB_Reset+1), hl         ; store start of data
                         ld b, 16                    ; height of background, could be param
                         exx                         ; switch to shadow
-                        ld hl, BACKBUFFER_BASE + 32 ; set backbuffer, skip first char row
+                        ld hl, BACKBUFFER_BASE + 32 ; set backbuffer, skip 2 char row
                         ; ld hl, SCREEN_BASE + 32
 DB_NextLine:
                         exx                         ; switch to standard
@@ -343,6 +343,30 @@ DB_SP:                  ld sp, 0                    ; restore stack
 
                         ei                              ; restore interrupts again
                         
+                        ret
+
+DisplayBorder:
+                        ld hl, BACKBUFFER_BASE + 32
+
+                        ld b, 8
+
+                        ld de, bordertData0
+
+DisplayBorderTopLine:
+                        push hl
+                        ld a, (de)
+
+                        dup 32
+                        ld (hl), a
+                        inc hl
+                        edup
+
+                        pop hl
+                        inc h
+                        inc de
+
+                        djnz DisplayBorderTopLine
+
                         ret
 
 ; Inputs: hl - background
