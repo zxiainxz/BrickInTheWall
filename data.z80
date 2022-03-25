@@ -89,6 +89,8 @@ currentlevel:           db 0
 currentbg:              dw 0
 currentbgattr:          db 56
 
+inputhandler:           dw HandleKempston                  ; the address of the input handler routine
+
 ; level data
 ; number blocks, name, data = 5 bytes
 LEVELDATA_SIZE          EQU 5

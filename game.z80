@@ -131,14 +131,21 @@ GameLoopDrawFinished:
                         call CheckYEdgeCollision
                         call CheckXEdgeCollision
 
-                        call ReadKeys
+                        ; call ReadKeys
+                        exx
+                        ld hl, (inputhandler)
+                        jp hl
+
+InputHandlerComplete:                        
                         call UpdateBatPosition
                         call CommitBatPosition
 
-                        ; call DrawVelocity
+                        call DrawVelocity
 
                         call UpdateBallXY
                         call CommitBallPosition
+
+                        call HandleOtherKeys
 
 GameLoopLogicFinished:
 
@@ -504,7 +511,9 @@ Switch_XDir:
 
                         ret
 
-ReadKeys:       
+HandleKeys:       
+                        exx
+
                         ld bc, Row_YUIOP
                         in a, (c)
 
@@ -518,29 +527,48 @@ ReadKeys:
                         and a
                         jr nz, TargetZeroVelocity
 
-                        ld bc, Row_VCXZShift                                ; Check for c, complete level
-                        in a, (c)
-
-                        and 8
-                        jr z, CompleteLevel
-
                         ld bc, Row_SpaceSymMNB                              ; check for <space>, launch ball
                         in a, (c)
 
-                        and 1
-                        ret nz
+                        and 1                                               ; check if a was 1
+                        jr z, LaunchBall
+                        jp InputHandlerComplete
 
+LaunchBall:
                         ld a, INITIAL_BALL_Y_DIR
                         ld (yballdir), a
                         ld a, INITIAL_BALL_X_DIR
                         ld (xballdir), a
-                        ret
+                        jp InputHandlerComplete
+
+; left - 1
+; right - 0
+; fire - 4
+HandleKempston:
+                        exx
+
+                        ld bc, Joy_Kempston
+                        in a, (c)
+
+                        bit 0, a
+                        jr nz, MoveBatRight             ; kempston is inverted
+
+                        bit 1, a
+                        jr nz, MoveBatLeft
+
+                        ld a, (batvelocitytarget)
+                        and a
+                        jr nz, TargetZeroVelocity
+
+                        bit 4, a
+                        jr nz, LaunchBall
+                        jp InputHandlerComplete
 
 TargetZeroVelocity:
                         xor a
                         ld (batvelocitytarget), a
 
-                        push hl
+                        exx
 
                         ld hl, (batvelocitydelta)
                         sub l                               ; 16bit neg to invert the velocity delta
@@ -550,7 +578,16 @@ TargetZeroVelocity:
                         ld h, a
                         ld (batvelocitydelta), hl
 
-                        pop hl
+                        exx
+
+                        jp InputHandlerComplete
+
+HandleOtherKeys:
+                        ld bc, Row_VCXZShift                                ; Check for c, complete level
+                        in a, (c)
+
+                        and 8
+                        jr z, CompleteLevel
                         ret
 
 CompleteLevel:
@@ -559,26 +596,20 @@ CompleteLevel:
                         ret
 
 MoveBatLeft:
-                        push hl
-
                         ld a, -BAT_VELOCITY_MAX
                         ld (batvelocitytarget), a
-                        ld hl, -BAT_VELOCITY_DELTA
-                        ld (batvelocitydelta), hl
+                        ld de, -BAT_VELOCITY_DELTA
+                        ld (batvelocitydelta), de
 
-                        pop hl
-                        ret
+                        jp InputHandlerComplete
 
 MoveBatRight:
-                        push hl
-
                         ld a, BAT_VELOCITY_MAX
                         ld (batvelocitytarget), a
-                        ld hl, BAT_VELOCITY_DELTA
-                        ld (batvelocitydelta), hl
+                        ld de, BAT_VELOCITY_DELTA
+                        ld (batvelocitydelta), de
 
-                        pop hl
-                        ret
+                        jp InputHandlerComplete
 
 UpdateBatPosition:
                         push hl                                 ; hl is always defined as ball x,y, so restore

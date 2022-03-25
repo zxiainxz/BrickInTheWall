@@ -8,6 +8,8 @@ Row_YUIOP                       EQU 0xDFFE
 Row_EnterLKJH                   EQU 0xBFFE
 Row_SpaceSymMNB                 EQU 0x7FFE
 
+Joy_Kempston                    EQU 31
+
 SCREEN_BASE                     EQU 0x4000
 SCREEN_END_HIGH                 EQU 0x58
 BACKBUFFER_BASE                 EQU 0xA000
