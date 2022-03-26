@@ -154,9 +154,10 @@ ClearPlayfield:
                         ld (hl), a
                         ldir
                         ret
+                        
 FadeScreenToWhite:
                         call ClearAttrs
-                        ld bc, 0x0800
+                        ld bc, 0x0400
 ClearCharRow:
 
                         ld a, 23
@@ -167,10 +168,18 @@ ClearNextCharRow:
                         add a
                         add a
 
-                        add b
-                        sub 1
+                        add c
 
                         ld h, 0
+                        ld l, a
+
+                        call scadd
+                        call ClearRow
+
+                        ld a, l
+                        add a, b
+                        add a, b
+                        dec a
                         ld l, a
 
                         call scadd
@@ -181,10 +190,7 @@ ClearNextCharRow:
                         dec a
                         cp 255
                         jr nz, ClearNextCharRow
-
-                        halt
-                        halt
-                        halt      
+        .5              halt
 
                         inc c
                         djnz ClearCharRow
@@ -192,8 +198,7 @@ ClearNextCharRow:
                         ret
 
 ClearRow
-                        push af
-
+                        ex af, af'
                         xor a
 
                         dup 32
@@ -201,12 +206,13 @@ ClearRow
                         inc de
                         edup
 
-                        pop af
+                        ex af, af'
+
                         ret
 
 ; Fast copy the whole of the back buffer to the screen
 CopyBackBufferToScreen:
-                        ; di                              ; messes with stack
+                        di                              ; messes with stack
 
                         ld (CBBTS_SP+1), sp             ; store original stack
 
@@ -273,7 +279,7 @@ CBBTS_SCREEN1:
 CBBTS_SP:               ld sp, 0                        ; restore stack
                         exx                             
 
-                        ; ei                              ; restore interrupts
+                        ei                              ; restore interrupts
                         ret
 
 ; Draws the background to the back buffer, skipping the first char row
