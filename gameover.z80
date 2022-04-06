@@ -1,10 +1,21 @@
 GameOverInitialise:
                         call InitialliseSpriteTable             ; Clear anything stored in the Sprite table by other scenes
                         call ClearAttrs
-                        call FadeScreenToWhite
 
+                        ld a, 2
+                        call FadeScreenTo
 
-                        ld hl, 0x5c3c                           ; 92, 60
+                        ld de, 0x4085
+                        call DrawBorder
+
+                        ld de, 0x4085
+                        call DrawBorder
+
+                        ld hl, ATTR_BASE+266
+                        ld a, 6
+                        call DrawLogoAttrs
+
+                        ld hl, 0x5c54                           ; 92, 84
 
                         ld bc, gameover_string
                         call DisplayString

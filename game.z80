@@ -208,7 +208,17 @@ StartLevel:
                         ld (yballdir), a
                         ld (xballdir), a
 
-                        call FadeScreenToWhite                          ; Fade out the screen
+                        call FadeScreenTo                               ; Fade out the screen
+
+                        ld b, 32
+                        ld hl, ATTR_BASE
+                        ld a, 2
+
+SL_NextCell:
+                        ld (hl), a
+                        inc hl
+                        djnz SL_NextCell
+
                         call ResetLevel                                 ; clear level data
                         call LoadLevel                                  ; load the new level
 

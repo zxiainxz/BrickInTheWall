@@ -30,7 +30,7 @@ CharDone:
 ; h, l: x, y
 ; bc: string address 0 terminated
 DisplayString:
-                        push hl
+                        push hl, ix
 DisplayNextChar:
                         ld a, (bc)
                         cp 0
@@ -53,7 +53,7 @@ MoveToNextChar:
                         jr DisplayNextChar
 
 DisplayStringDone:
-                        pop hl
+                        pop ix, hl
                         ret
 
 ; h, l: x, y

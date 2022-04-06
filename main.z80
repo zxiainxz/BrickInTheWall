@@ -23,6 +23,7 @@ Code_Start:             EQU 0x7FFD
                         include "screenutils.z80"
                         include "spriteutils.z80"
                         include "startscreen.z80"
+                        include "ui.z80"
                         
 Main_Start:
 ; LOGPOINT Started
@@ -89,6 +90,17 @@ InitialiseInterrupt:
 
 Interrupt:
                         di                                              ; Disable interrupts
+                        push af
+
+                        ld a, (secondcounter)
+                        inc a
+                        cp 50
+                        jr nz, I1
+                        xor a
+I1:
+                        ld (secondcounter), a
+
+                        pop af
                         ei                                              ; enable interrupts again
                         ret
 

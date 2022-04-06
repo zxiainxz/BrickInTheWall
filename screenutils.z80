@@ -124,6 +124,7 @@ pixelattradd:
                         ret
 
 
+; a - attr colour
 ClearScreen:
                         ld hl, $4000
                         ld de, $4001
@@ -131,16 +132,15 @@ ClearScreen:
                         ld (hl), l
                         ldir
 
-                        ld a, 56
                         ld bc, 767
                         ld (hl), a
                         ldir
                         ret
 
+; a - colour
 ClearAttrs:
                         ld hl, $5800
                         ld de, $5801
-                        ld a, 56
                         ld bc, 767
                         ld (hl), a
                         ldir
@@ -155,7 +155,8 @@ ClearPlayfield:
                         ldir
                         ret
                         
-FadeScreenToWhite:
+; a - colour
+FadeScreenTo:
                         call ClearAttrs
                         ld bc, 0x0400
 ClearCharRow:

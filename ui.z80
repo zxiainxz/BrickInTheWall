@@ -1,0 +1,212 @@
+bordertiles: dw boxborder1, boxborder2, boxborder3, boxborder4, boxborder5
+             dw topleftcorner1, topleftcorner2, topleftcorner3, topleftcorner4, topleftcorner5
+             dw toprightcorner1, toprightcorner2, toprightcorner3, toprightcorner4, toprightcorner5
+             dw bottomleftcorner1, bottomleftcorner2, bottomleftcorner3, bottomleftcorner4, bottomleftcorner5
+             dw bottomrightcorner1, bottomrightcorner2, bottomrightcorner3, bottomrightcorner4, bottomrightcorner5
+             dw boxborderempty
+
+boxborder1: db 0, 0, 0, 0, 0, 0, 0, 255 ; 0
+boxborder2: db 1, 1, 1, 1, 1, 1, 1, 1 ; 2
+boxborder3: db 128, 128, 128, 128, 128, 128, 128, 128 ; 4
+boxborder4: db 255, 0, 0, 0, 0, 0, 0, 0 ; 6
+boxborder5: db 255, 255, 255, 255, 255, 255, 255, 255 ; 8
+topleftcorner1: db 255, 128, 128, 128, 128, 135, 132, 133 ; 10 
+topleftcorner2: db 255, 0, 0, 0, 0, 200, 0, 244 ; 12
+topleftcorner3: db 255, 0, 0, 0, 0, 128, 0, 128 ; 14
+topleftcorner4: db 133, 133, 129, 129, 132, 129, 128, 128 ; 16
+topleftcorner5: db 133, 128, 128, 128, 128, 128, 128, 128 ; 18
+toprightcorner1: db 255, 0, 0, 0, 0, 1, 0, 1 ; 20
+toprightcorner2: db 255, 0, 0, 0, 0, 19, 0, 47 ; 22
+toprightcorner3: db 255, 1, 1, 1, 1, 225, 33, 161 ; 24
+toprightcorner4: db 161, 161, 129, 129, 33, 129, 1, 1 ;26
+toprightcorner5: db 161, 1, 1, 1, 1, 1, 1, 1 ; 28
+bottomleftcorner1: db 128, 128, 128, 128, 128, 128, 128, 133 ; 30
+bottomleftcorner2: db 128, 128, 129, 132, 129, 129, 133, 133 ; 32
+bottomleftcorner3: db 133, 132, 135, 128, 128, 128, 128, 255 ; 34
+bottomleftcorner4: db 244, 0, 200, 0, 0, 0, 0, 255 ; 36
+bottomleftcorner5: db 128, 0, 128, 0, 0, 0, 0, 255 ; 38
+bottomrightcorner1: db 1, 1, 1, 1, 1, 1, 1, 161 ; 40
+bottomrightcorner2: db 1, 1, 129, 33, 129, 129, 161 ; 42
+bottomrightcorner3: db 1, 0, 1, 0, 0, 0, 0, 255 ; 44
+bottomrightcorner4: db 47, 0, 19, 0, 0, 0, 0, 255 ; 46 
+bottomrightcorner5: db 161, 33, 225, 1, 1, 1, 1, 255 ; 48
+boxborderempty: db 0, 0, 0, 0, 0, 0, 0, 0
+
+uiboxtilemaptop: 
+    db 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50
+    db 2, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 4
+    db 2, 8, 10, 12, 14, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 20, 22, 24, 8, 4
+    db 2, 8, 16, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 26, 8, 4
+    db 2, 8, 18, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 28, 8, 4
+
+uiboxtilemapmiddle:
+    db 2, 8, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 8, 4
+
+uiboxtilemapbottom:
+    db 2, 8, 30, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 40, 8, 4
+    db 2, 8, 32, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 42, 8, 4
+    db 2, 8, 34, 36, 38, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 44, 46, 48, 8, 4
+    db 2, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 4
+    db 50, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 50
+
+; de - first square to draw
+DrawBorder:
+                        ld b, 22
+                        ex de, hl
+
+                        ld iy, uiboxtilemaptop
+
+                        ld c, 5
+DB_DrawRow:
+                        push hl
+                        call DrawMapRow
+
+                        pop hl
+
+                        ld de, 0x0700
+                        add hl, de
+                        ex de, hl
+
+                        call NextRow2
+                        ex de, hl
+
+                        dec c
+                        jr nz, DB_DrawRow
+
+                        ld c, 4
+DB_DrawMiddleRow:
+                        push hl
+                        ld iy, uiboxtilemapmiddle
+
+                        call DrawMapRow
+
+                        pop hl
+                        ld de, 0x0700
+                        add hl, de
+                        ex de, hl
+
+                        call NextRow2
+                        ex de, hl
+
+                        dec c
+                        jr nz, DB_DrawMiddleRow
+
+                        ld c, 5
+                        ld iy, uiboxtilemapbottom
+DB_DrawBottom:
+                        push hl
+
+                        call DrawMapRow
+
+                        pop hl
+                        ld de, 0x0700
+                        add hl, de
+                        ex de, hl
+
+                        call NextRow2
+                        ex de, hl
+
+                        dec c
+                        jr nz, DB_DrawBottom
+
+                        ret
+
+DrawMapRow:
+                        ld b, 22
+                        
+DB_DrawRowCell:
+                        ld ix, bordertiles
+                        ld d, 0
+                        ld e, (iy)
+
+                        ld a, e
+                        cp 8
+                        jr z, DB_DoCell
+
+                        ld a, l
+                        ex af, af'
+                        ld a, h
+
+                        exx
+                        or 0x87                         ; see https://spectrumcomputing.co.uk/forums/viewtopic.php?t=3070
+                        rra
+                        rra
+                        srl a
+                        ld h, a
+                        ex af, af'
+                        ld l, a
+
+                        ld a, (hl)
+                        or 64
+                        ld (hl), a
+                        exx
+                        
+DB_DoCell
+                        inc iy
+                        add ix, de
+
+                        ld e, (ix)
+                        ld d, (ix+1)
+
+                        push hl
+
+                        dup 7
+                        ld a, (de)
+                        ld (hl), a
+                        inc h
+                        inc de
+                        edup
+                        ld a, (de)
+                        ld (hl), a
+
+                        pop hl
+                        inc hl
+
+                        djnz DB_DrawRowCell
+                        ret
+
+DrawLogo:
+                        ld hl, logoData0
+                        ld c, 51
+
+DL_NextRow:
+                        ld b, 10
+
+                        push de
+DL_DrawRow:
+                        ld a, (hl)
+                        ld (de), a
+                        inc hl
+                        inc de
+
+                        djnz DL_DrawRow
+
+                        pop de
+                        call NextRow2
+
+                        dec c
+                        jr nz, DL_NextRow
+
+                        ret
+
+; hl - attr address
+; a - colour
+DrawLogoAttrs:
+                        ld c, 8
+
+DL_AttrRow:
+                        ld b, 12
+
+DL_AttrCell:
+                        ld (hl), a
+                        inc hl
+                        djnz DL_AttrCell
+
+                        ld de, 20
+                        add hl, de
+
+                        dec c
+                        jr nz, DL_AttrRow
+
+                        ret
+                        

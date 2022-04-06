@@ -1,12 +1,20 @@
 LevelCompleteInitialise:
                         call InitialliseSpriteTable             ; Clear anything stored in the Sprite table by other scenes
+                        ld a, 6
                         call ClearAttrs
-                        call FadeScreenToWhite
+                        call FadeScreenTo
+
+                        ld de, 0x4085
+                        call DrawBorder
+
+                        ld hl, ATTR_BASE+266
+                        ld a, 2
+                        call DrawLogoAttrs
 
                         ld bc, level_complete_string
 
                         call CentreString
-                        ld l, 64
+                        ld l, 84
                         call DisplayString
 
                         jp InitialiseFinished

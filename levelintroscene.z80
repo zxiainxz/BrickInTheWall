@@ -2,8 +2,21 @@ IntroInitialise:
                         push af
 
                         call InitialliseSpriteTable             ; Clear anything stored in the Sprite table by other scenes
+
+                        ld a, 7
                         call ClearAttrs
-                        call FadeScreenToWhite
+
+                        call FadeScreenTo
+
+                        ld a, 6
+                        call ClearAttrs
+
+                        ld de, 0x4085
+                        call DrawBorder
+
+                        ld hl, ATTR_BASE+266
+                        ld a, 2
+                        call DrawLogoAttrs
 
                         ld a, (currentlevel)
                         inc a
@@ -22,22 +35,27 @@ LevelStringReady:
                         call DisplayString
 
                         call LoadCurrentLevel
-                        inc ix
 
-                        ld c, (ix + 2)
-                        ld b, (ix + 3)
+                        ld bc, (ix+LEVEL_HEADER_BACKGROUND)
+                        ; ld c, (ix + 2)
+                        ; ld b, (ix + 3)
                         ld (currentbg), bc
 
-                        ld a, (ix+4)
+                        ld a, (ix+LEVEL_HEADER_BACKGROUND_ATTR)
                         ld (currentbgattr), a
 
-                        ld c, (ix)
-                        ld b, (ix + 1)
-
+                        ; ld c, (ix)
+                        ; ld b, (ix + 1)
+                        ld bc, (ix+LEVEL_HEADER_NAME_1)
                         call CentreString
                         ld l, 96
                         call DisplayString
 
+                        ld bc, (ix+LEVEL_HEADER_NAME_2)
+                        call CentreString
+                        ld l, 104
+                        call DisplayString
+                        
                         pop af
                         jp InitialiseFinished
 

@@ -1,24 +1,54 @@
 StartScreenInitialise:
+                        ld a, 6
                         call ClearScreen
                         call InitialliseSpriteTable             ; Clear anything stored in the Sprite table by other scenes
 
+                        ld de, 0x4085
+                        call DrawBorder
+
+                        ld hl, ATTR_BASE+234
+                        ld a, 2
+                        call DrawLogoAttrs
+                        
                         ld a, 1
                         out (#fe), a
 
-                        ld hl, 0x3c40                           ; 60, 64
+                        ld de, 0x46EB
+                        ; ld de, 0x480B
+                        call DrawLogo
 
-                        ld bc, breakthru_string
-                        call DisplayString
-
-                        ld hl, 0x3060                           ; 40, 96
+                        ld hl, 0x3098                           ; 40, 96
                         ld bc, anykey_string
                         call DisplayString
 
                         jp InitialiseFinished
 
+GetNextColour:
+                        ld a, (introscenecolour)
+                        inc a
+                        ld (introscenecolour), a
+
+                        cp 7
+                        ret nz
+
+                        ld a, 2
+                        ld (introscenecolour), a
+                        ret
+
 StartScreenLoop:
+                        halt
+
+                        ld a, (secondcounter)
+                        and a
+                        jr nz, SSL_ReadKey
+
+                        call GetNextColour
+                        ld hl, ATTR_BASE+234
+                        call DrawLogoAttrs
+
+SSL_ReadKey:
                         ld bc, Row_SpaceSymMNB                  ; Check for Space
-                         in a, (c)
+                        in a, (c)
 
                         and 1
                         jr nz, StartScreenLoop                  ; Wait for space
