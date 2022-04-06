@@ -17,7 +17,7 @@ StartScreenInitialise:
                         ; ld de, 0x480B
                         call DrawLogo
 
-                        ld hl, 0x3098                           ; 40, 96
+                        ld hl, 0x3498                            ; 40, 96
                         ld bc, anykey_string
                         call DisplayString
 
@@ -51,8 +51,43 @@ SSL_ReadKey:
                         in a, (c)
 
                         and 1
-                        jr nz, StartScreenLoop                  ; Wait for space
+                        jr z, StartGameKeys                             
 
+                        ld bc, Row_09876
+                        in a, (c)
+                        and 1
+                        jr z, StartGameCursor
+
+                        ld bc, Row_54321
+                        in a, (c)
+
+                        bit 4, a
+                        jr z, StartGameSinclair
+
+                        ld bc, Joy_Kempston
+                        in a, (c)
+                        bit 4, a
+                        jp nz, StartGameKempston
+
+                        jr StartScreenLoop
+
+StartGameKeys:
+                        ld hl, HandleKeys
+                        jr StartGame
+
+StartGameSinclair:
+                        ld hl, HandleSpectrum
+                        jr StartGame
+
+StartGameKempston:
+                        ld hl, HandleKempston
+                        jr StartGame
+
+StartGameCursor:
+                        ld hl, HandleCursor
+
+StartGame:
+                        ld (inputhandler), hl
                         call InitialiseScore
 
                         ld a, INTRO_SCENE

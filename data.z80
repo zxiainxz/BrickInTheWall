@@ -145,7 +145,7 @@ bonusadder              db 0
 score:                  byte "000000\0"
 
 breakthru_string:       byte "BRICK IN THE WALL\0"
-anykey_string:          byte "PRESS SPACE TO START\0"
+anykey_string:          byte "PRESS FIRE TO START\0"
 score_string:           byte "SCORE\0"
 lives_string:           byte "LIVES\0"
 gameover_string:        byte "GAME OVER\0"
